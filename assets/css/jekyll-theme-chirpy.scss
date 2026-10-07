@@ -1,0 +1,29 @@
+---
+---
+
+@use 'abstracts/variables' with (
+  $theme: '{{ site.theme_mode }}',
+  $font-family-base: ('Pretendard Variable', Pretendard, sans-serif),
+  $font-family-heading: ('Pretendard Variable', Pretendard, sans-serif)
+);
+
+/* prettier-ignore */
+@use 'main
+{%- if jekyll.environment == 'production' -%}
+  .bundle
+{%- endif -%}
+';
+
+/* append your custom style below */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+
+.pagination,
+kbd,
+.tag span,
+#archives .date.day {
+  font-family: 'Pretendard Variable', Pretendard, sans-serif;
+}
+
+main {
+  line-height: 1.6;
+}
