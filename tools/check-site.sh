@@ -382,6 +382,9 @@ assert_contains assets/css/base.css '.pager a, .pager-btn { transition: color .2
 assert_contains assets/css/base.css '.book.arrived .cover { transform: scale(1.05); box-shadow: 0 8px 18px -6px rgba(0, 0, 0, .18); }'
 assert_contains assets/js/nav.js "book.classList.add('arrived')"
 
+# Kill switch for the old Chirpy service worker
+assert_contains sw.min.js 'registration.unregister()'
+
 if ((fails)); then
   echo "$fails check(s) failed"
   exit 1
