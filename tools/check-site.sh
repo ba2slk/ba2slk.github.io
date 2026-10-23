@@ -385,6 +385,9 @@ assert_contains assets/js/nav.js "book.classList.add('arrived')"
 # Kill switch for the old Chirpy service worker
 assert_contains sw.min.js 'registration.unregister()'
 
+# Kill switch for the old Chirpy service worker
+assert_contains sw.min.js 'registration.unregister()'
+
 if ((fails)); then
   echo "$fails check(s) failed"
   exit 1
