@@ -3,6 +3,9 @@ title: 2장. 느려진 서비스, 어디부터 봐야 할까
 date: 2026-09-17 01:04:05 +0900
 categories: [Dev, Books]
 tags: [backend]
+description: "느려진 서비스를 처리량과 응답 시간으로 진단하고, DB 커넥션 풀·서버 캐시·응답 압축·CDN으로 성능을 끌어올리는 기본기를 정리했다."
+book: practical-be-knowledge-for-juniors
+chapter: 2
 ---
 
 ## 처리량과 응답 시간
@@ -83,7 +86,6 @@ Stale Connection으로 인한 에러를 방지할 수 있는 설정
 - 유효성 검사
 
 최대 유지 시간: 생성된 시점으로부터 N 시간까지만 유효하도록 설정 (커넥션이 유효하더라도 종료 후 제거)
-**필요한 이유**:
 
 
 ### 서버 캐시

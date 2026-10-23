@@ -3,6 +3,9 @@ title: 3장. 성능을 좌우하는 DB 설계와 쿼리
 date: 2026-09-21 19:12:24 +0900
 categories: [Dev, Books]
 tags: [backend]
+description: "DB가 성능의 핵심인 이유와 조회 패턴에 맞는 인덱스 설계, 조회 성능을 개선하는 방법, 실무에서 주의할 점을 정리했다."
+book: practical-be-knowledge-for-juniors
+chapter: 3
 ---
 
 ## DB는 성능의 핵심
@@ -28,7 +31,7 @@ where title like `%검색어%` order by id desc limit 10;
 - 행 하나에 키 여러 개. 
 - 컬럼 값 안의 원소(배열 요소, JSON 키, 문자열 조각 등)를 뽑아 "원소 → 행 목록" 형태로 저장하는 역색인이라 `LIKE '%abc%'`, 배열/JSONB 포함 검색에 강하다.
 
-![](https://velog.velcdn.com/images/fundev/post/bb7596b8-317e-4d42-8046-978e87c2f01a/image.png)
+![GIN 인덱스와 bigram 검색 과정](/assets/img/posts/ch03-db-design-and-query/gin-bigram.png)
 
 **pg_bigm**
 문자열을 2글자씩 잘라 GIN에 넣는 확장. 검색어도 똑같이 잘라 조각을 모두 가진 행을 인덱스에서 뽑으므로 `%`가 앞에 붙어도 인덱스를 탈 수 있다.
@@ -93,10 +96,6 @@ select * from article
 where deleted = false
 order by id desc
 limit 10;
-```
-
-```sql
-
 ```
 
 ### 3. 조회 범위를 시간 기준으로 제한하기

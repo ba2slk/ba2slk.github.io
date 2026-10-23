@@ -3,6 +3,9 @@ title: 5장. 비동기 연동
 date: 2026-10-07 15:15:46 +0900
 categories: [Dev, Books]
 tags: [backend]
+description: "동기와 비동기 연동의 차이, 그리고 스레드·메시징 시스템·트랜잭션 아웃박스·배치·CDC로 비동기 연동을 구현하는 전략을 정리했다."
+book: practical-be-knowledge-for-juniors
+chapter: 5
 ---
 
 ## 동기 vs 비동기

@@ -3,6 +3,9 @@ title: 4장. 외부 연동이 문제일 때 살펴봐야 할 것들
 date: 2026-09-30 23:19:43 +0900
 categories: [Dev, Books]
 tags: [backend]
+description: "외부 연동 서비스가 느려지거나 장애가 났을 때 우리 서비스를 지키는 타임아웃, 재시도, 동시 요청 제한, 서킷 브레이커를 정리했다."
+book: practical-be-knowledge-for-juniors
+chapter: 4
 ---
 
 ## 우리는 문제가 없는데
