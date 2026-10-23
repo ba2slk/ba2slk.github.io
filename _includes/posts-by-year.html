@@ -1,0 +1,9 @@
+{%- assign years = include.posts | group_by_exp: 'p', "p.date | date: '%Y'" -%}
+{%- for year in years %}
+<h2 class="year mono">{{ year.name }}</h2>
+<div class="post-list">
+{%- for post in year.items %}
+{% include post-row.html post=post %}
+{%- endfor %}
+</div>
+{%- endfor %}

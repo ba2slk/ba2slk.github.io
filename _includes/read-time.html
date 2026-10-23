@@ -1,0 +1,4 @@
+{%- assign chars = include.content | strip_html | strip_newlines | size -%}
+{%- assign minutes = chars | divided_by: 500.0 | ceil -%}
+{%- if minutes < 1 %}{% assign minutes = 1 %}{% endif -%}
+{{ minutes }}m

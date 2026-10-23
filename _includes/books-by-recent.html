@@ -1,0 +1,21 @@
+{%- comment -%}
+Sets `ordered_books`: books whose newest note is most recent come first, books without notes last.
+Archived books (`archived: true`) are left out.
+site.posts is already newest first, so the first time a book appears is its most recent note.
+{%- endcomment -%}
+{%- assign ordered_books = '' | split: '' -%}
+{%- assign seen = '|' -%}
+{%- for p in site.posts -%}
+  {%- if p.book -%}
+    {%- assign key = '|' | append: p.book | append: '|' -%}
+    {%- unless seen contains key -%}
+      {%- assign b = site.books | where: 'slug', p.book | first -%}
+      {%- if b and b.archived != true -%}{%- assign ordered_books = ordered_books | push: b -%}{%- endif -%}
+      {%- assign seen = seen | append: p.book | append: '|' -%}
+    {%- endunless -%}
+  {%- endif -%}
+{%- endfor -%}
+{%- for b in site.books -%}
+  {%- assign key = '|' | append: b.slug | append: '|' -%}
+  {%- unless seen contains key or b.archived == true -%}{%- assign ordered_books = ordered_books | push: b -%}{%- endunless -%}
+{%- endfor -%}

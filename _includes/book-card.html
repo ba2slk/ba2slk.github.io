@@ -1,0 +1,3 @@
+<a class="book-card"{% if include.index != nil %} style="--i: {{ include.index }}"{% endif %} href="{{ '/books/' | relative_url }}?b={{ include.book.slug }}">
+  {% include cover.html book=include.book %}
+</a>

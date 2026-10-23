@@ -1,0 +1,62 @@
+---
+layout: default
+---
+{%- assign book = site.books | where: 'slug', page.book | first -%}
+{%- if book -%}
+  {%- assign siblings = site.posts | where: 'book', page.book | sort: 'chapter' -%}
+{%- else -%}
+  {%- comment -%} Articles: posts not attached to a known book, oldest first {%- endcomment -%}
+  {%- assign book_slugs = site.books | map: 'slug' | join: '|' | prepend: '|' | append: '|' -%}
+  {%- assign siblings = '' | split: '' -%}
+  {%- for p in site.posts reversed -%}
+    {%- assign key = '|' | append: p.book | append: '|' -%}
+    {%- unless p.book and book_slugs contains key -%}{%- assign siblings = siblings | push: p -%}{%- endunless -%}
+  {%- endfor -%}
+{%- endif -%}
+{%- for p in siblings -%}
+  {%- if p.url == page.url -%}{%- assign i = forloop.index0 -%}{%- endif -%}
+{%- endfor -%}
+{%- if i > 0 %}{% assign prev_i = i | minus: 1 %}{% assign prev = siblings[prev_i] %}{% endif -%}
+{%- assign next_i = i | plus: 1 -%}
+{%- assign next = siblings[next_i] -%}
+
+<header class="post-head">
+  <h1>{{ page.title }}</h1>
+  <div class="meta">
+    <time datetime="{{ page.date | date_to_xmlschema }}">{{ page.date | date: '%Y-%m-%d' }}</time>
+    <span class="dot">·</span>
+    <span>{% include read-time.html content=content %}</span>
+    {%- if book %}
+    <span class="dot">·</span>
+    <a class="meta-book" href="{{ '/books/' | relative_url }}?b={{ book.slug }}">{{ book.title }}</a>
+    {%- endif %}
+  </div>
+</header>
+
+<aside class="toc" id="toc"></aside>
+
+<article class="prose">
+{{ content }}
+</article>
+
+
+{%- if prev or next %}
+<nav class="pager">
+  {%- if prev %}
+  <a class="pager-prev" href="{{ prev.url | relative_url }}"><small>← Prev</small>{{ prev.title }}</a>
+  {%- else %}
+  <span></span>
+  {%- endif %}
+  {%- if next %}
+  <a class="pager-next" href="{{ next.url | relative_url }}"><small>Next →</small>{{ next.title }}</a>
+  {%- endif %}
+</nav>
+{%- endif %}
+
+<script src="{{ '/assets/js/toc.js' | relative_url }}"></script>
+<script>
+  document.querySelectorAll('.prose div[class*="language-"]').forEach(function (el) {
+    var m = el.className.match(/language-(\S+)/);
+    if (m && m[1] !== 'plaintext') el.setAttribute('data-lang', m[1]);
+  });
+</script>

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="{{ site.lang }}">
+<head>
+{% include head.html %}
+</head>
+<body>
+<div class="wrap">
+{% include header.html %}
+<main>
+{{ content }}
+</main>
+{% include footer.html %}
+</div>
+<div class="search-modal" id="search-modal" hidden>
+  <div class="search-box" role="dialog" aria-label="Search">
+    <input type="search" id="search-input" placeholder="Search" autocomplete="off">
+    <ul class="search-results" id="search-results"></ul>
+  </div>
+</div>
+<script src="{{ '/assets/js/search.js' | relative_url }}" data-index="{{ '/search.json' | relative_url }}"></script>
+<script src="{{ '/assets/js/nav.js' | relative_url }}"></script>
+</body>
+</html>

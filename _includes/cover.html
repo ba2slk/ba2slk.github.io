@@ -1,0 +1,6 @@
+{%- comment -%} A book's cover image, or the typographic fallback card. {%- endcomment -%}
+{%- if include.book.cover -%}
+<img class="cover" src="{{ include.book.cover | relative_url }}" alt="{{ include.book.title }}">
+{%- else -%}
+{% include cover-fallback.html book=include.book %}
+{%- endif -%}

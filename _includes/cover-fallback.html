@@ -1,0 +1,8 @@
+{%- comment -%} Typographic cover for books without a cover image. Tone is stable per book: `tone` front matter, else derived from the slug. {%- endcomment -%}
+{%- assign tones = 'ivory,slate,sand' | split: ',' -%}
+{%- assign ti = include.book.slug | size | modulo: 3 -%}
+{%- assign tone = include.book.tone | default: tones[ti] -%}
+<div class="cover cover-fallback tone-{{ tone }}">
+  <span class="cover-title">{{ include.book.title }}</span>
+  {%- if include.book.author %}<span class="cover-author">{{ include.book.author }}</span>{% endif %}
+</div>

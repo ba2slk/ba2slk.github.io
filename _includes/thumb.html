@@ -1,0 +1,8 @@
+{%- comment -%} Thumbnail: article `image`, else the book's cover image, else nothing. Pass `book` if already looked up. {%- endcomment -%}
+{%- assign tb = include.book -%}
+{%- if tb == nil and include.post.book -%}{%- assign tb = site.books | where: 'slug', include.post.book | first -%}{%- endif -%}
+{%- if include.post.image -%}
+<img class="thumb" src="{{ include.post.image | relative_url }}" alt="" loading="lazy">
+{%- elsif tb and tb.cover -%}
+<img class="thumb thumb-book" src="{{ tb.cover | relative_url }}" alt="" loading="lazy">
+{%- endif -%}

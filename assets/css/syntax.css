@@ -1,0 +1,12 @@
+/* Rouge tokens. Colors only, no bold. */
+.highlight .c, .highlight .c1, .highlight .cm, .highlight .cs, .highlight .cp { color: #6e7781; font-style: italic; }
+.highlight .k, .highlight .kd, .highlight .kn, .highlight .kp, .highlight .kr, .highlight .kt, .highlight .kc, .highlight .ow { color: #cf222e; }
+.highlight .s, .highlight .s1, .highlight .s2, .highlight .sb, .highlight .sc, .highlight .sd, .highlight .se, .highlight .sh, .highlight .si, .highlight .sx, .highlight .sr { color: #0a3069; }
+.highlight .m, .highlight .mi, .highlight .mf, .highlight .mh, .highlight .mo, .highlight .il { color: #0550ae; }
+.highlight .nf, .highlight .fm, .highlight .nc { color: #8250df; }
+.highlight .nb, .highlight .bp, .highlight .nt, .highlight .na, .highlight .nd { color: #0550ae; }
+.highlight .nv, .highlight .vi, .highlight .vg { color: #953800; }
+.highlight .o { color: #24292f; }
+.highlight .gd { color: #82071e; background: #ffebe9; }
+.highlight .gi { color: #116329; background: #dafbe1; }
+

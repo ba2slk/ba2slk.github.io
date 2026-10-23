@@ -1,0 +1,35 @@
+---
+layout: default
+---
+<header class="page-hero">
+  {% include hero-art.html %}
+</header>
+<h1 class="page-title">{{ site.title | escape }}</h1>
+
+<section>
+  {%- assign articles = site.posts | where_exp: "p", "p.book == nil" %}
+  <div class="sec"><h2>ARTICLES <span class="count">{{ articles.size }}</span></h2><a class="mono" href="{{ '/articles/' | relative_url }}">ALL →</a></div>
+  {%- if articles.size > 0 %}
+  <div class="post-list">
+    {%- for post in articles limit: 5 %}
+    {% include post-row.html post=post %}
+    {%- endfor %}
+  </div>
+  {%- else %}
+  <p class="empty">No articles yet.</p>
+  {%- endif %}
+</section>
+
+<section>
+  {%- include books-by-recent.html -%}
+  <div class="sec"><h2>BOOKS <span class="count">{{ ordered_books.size }}</span></h2><a class="mono" href="{{ '/books/' | relative_url }}">ALL →</a></div>
+  <div class="shelf">
+    {%- assign shown = 0 -%}
+    {%- for book in ordered_books %}
+    {%- if shown < 5 %}
+    {% include book-card.html book=book index=shown %}
+    {%- assign shown = shown | plus: 1 -%}
+    {%- endif %}
+    {%- endfor %}
+  </div>
+</section>
