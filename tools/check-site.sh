@@ -388,6 +388,9 @@ assert_contains sw.min.js 'registration.unregister()'
 # Kill switch for the old Chirpy service worker
 assert_contains sw.min.js 'registration.unregister()'
 
+# No site tagline in titles or meta
+assert_not_contains index.html '공부 기록'
+
 if ((fails)); then
   echo "$fails check(s) failed"
   exit 1
