@@ -1,0 +1,146 @@
+// Pure helpers shared by the editor server and the browser app.
+(function (root, factory) {
+  if (typeof module !== 'undefined') module.exports = factory();
+  else root.EditorLib = factory();
+})(this, function () {
+  const FM = /^---\n([\s\S]*?)\n---\n?/;
+  const KEY = /^([A-Za-z_][\w-]*):(?:\s(.*))?$/;
+
+  function unquote(v) {
+    v = (v || '').trim();
+    if (/^".*"$/.test(v)) return JSON.parse(v);
+    if (/^'.*'$/.test(v)) return v.slice(1, -1).replace(/''/g, "'");
+    return v;
+  }
+
+  function parseFrontMatter(text) {
+    const m = text.match(FM);
+    const data = {};
+    if (m) for (const line of m[1].split('\n')) {
+      const kv = line.match(KEY);
+      if (kv) data[kv[1]] = unquote(kv[2]);
+    }
+    return { data, body: m ? text.slice(m[0].length) : text };
+  }
+
+  // YAML scalar: quote only when a plain value would be misread.
+  function scalar(v) {
+    v = String(v);
+    if (/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2} [+-]\d{4})?$/.test(v)) return v; // dates stay plain
+    if (v === '' || /^[\w./@()가-힣ㄱ-ㆎ -]*$/.test(v) && !/^\s|\s$|^-|: /.test(v)) return v;
+    return JSON.stringify(v);
+  }
+
+  // Edit front matter line by line: changed keys are rewritten, `null` removes a key,
+  // new keys are appended, everything else is kept byte for byte.
+  function setFrontMatter(text, changes) {
+    const m = text.match(FM);
+    if (!m) {
+      const keys = Object.keys(changes).filter((k) => changes[k] != null);
+      if (!keys.length) return text;
+      return `---\n${keys.map((k) => `${k}: ${scalar(changes[k])}`).join('\n')}\n---\n\n${text}`;
+    }
+    const lines = m[1].split('\n');
+    const seen = new Set();
+    const out = [];
+    for (const line of lines) {
+      const kv = line.match(KEY);
+      if (!kv || !(kv[1] in changes)) { out.push(line); continue; }
+      seen.add(kv[1]);
+      const next = changes[kv[1]];
+      if (next == null) continue;
+      if (unquote(kv[2]) === String(next)) out.push(line);
+      else out.push(next === '' ? `${kv[1]}:` : `${kv[1]}: ${scalar(next)}`);
+    }
+    for (const k of Object.keys(changes)) {
+      if (!seen.has(k) && changes[k] != null && changes[k] !== '') out.push(`${k}: ${scalar(changes[k])}`);
+    }
+    const head = `---\n${out.join('\n')}\n---\n`;
+    return head + text.slice(m[0].length);
+  }
+
+  function slugify(s) {
+    return String(s).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  }
+
+  // Resolve `rel` under `root` and refuse anything outside the allowed folders.
+  function safePath(root, rel, allowed) {
+    const path = require('path');
+    const abs = path.resolve(root, rel);
+    if (!allowed.some((dir) => abs.startsWith(path.join(root, dir) + path.sep))) throw new Error('path not allowed: ' + rel);
+    return abs;
+  }
+
+  function postSlug(p) {
+    return p.split('/').pop().replace(/\.md$/, '').replace(/^\d{4}-\d{2}-\d{2}-/, '');
+  }
+
+  function renamePlan(p, slug) {
+    const dir = p.slice(0, p.lastIndexOf('/'));
+    const file = p.split('/').pop();
+    const date = (file.match(/^(\d{4}-\d{2}-\d{2}-)/) || [, ''])[1];
+    const old = postSlug(p);
+    return { from: p, to: `${dir}/${date}${slug}.md`, imgFrom: `assets/img/posts/${old}`, imgTo: `assets/img/posts/${slug}` };
+  }
+
+  function rewriteImageLinks(text, oldSlug, newSlug) {
+    return text.split(`/assets/img/posts/${oldSlug}/`).join(`/assets/img/posts/${newSlug}/`);
+  }
+
+  function seoulParts(now) {
+    const s = now.toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' });
+    return { date: s.slice(0, 10), time: s.slice(11, 19) };
+  }
+
+  function seoulStamp(now) {
+    const { date, time } = seoulParts(now);
+    return `${date} ${time} +0900`;
+  }
+
+  function publishPath(draft, now) {
+    return `_posts/${seoulParts(now).date}-${postSlug(draft)}.md`;
+  }
+
+  function nextChapter(posts, book) {
+    const chs = posts.filter((p) => p.book === book).map((p) => Number(p.chapter) || 0);
+    return chs.length ? Math.max(...chs) + 1 : 1;
+  }
+
+  function readMinutes(html) {
+    const chars = String(html).replace(/<[^>]+>/g, '').replace(/\n/g, '').length;
+    return Math.max(1, Math.ceil(chars / 500));
+  }
+
+  function imageName(name, stamp) {
+    const clean = String(name).toLowerCase().replace(/[^a-z0-9.]+/g, '-').replace(/^-+|-+$/g, '');
+    return `${stamp}-${clean || 'image.png'}`;
+  }
+
+  function bookFile(b) {
+    const line = (k) => (b[k] ? `${k}: ${scalar(b[k])}` : `${k}:`);
+    return `---\n${['title', 'author', 'publisher', 'cover', 'description', 'link'].map(line).join('\n')}\n---\n`;
+  }
+
+  // Same as _plugins/arrows.rb: `->` / `<-` outside code become → / ←.
+  function arrows(html) {
+    return String(html).split(/(<pre[\s>][\s\S]*?<\/pre>|<code[\s>][\s\S]*?<\/code>)/).map((part, i) =>
+      (i % 2 ? part : part.split('-&gt;').join('→').split('&lt;-').join('←'))).join('');
+  }
+
+  // Same rule as _includes/books-by-recent.html: newest published note first, books without notes last.
+  // Unlike the site, archived books stay in the list so they can still be picked and restored.
+  function booksByRecent(books, posts) {
+    const latest = {};
+    for (const p of posts) {
+      if (!p.book || p.draft) continue;
+      const d = p.path.split('/').pop().slice(0, 10);
+      if (!latest[p.book] || d > latest[p.book]) latest[p.book] = d;
+    }
+    return books.map((b, i) => ({ b, i })).sort((x, y) => {
+      const a = latest[x.b.slug] || '', c = latest[y.b.slug] || '';
+      return a === c ? x.i - y.i : a < c ? 1 : -1;
+    }).map((x) => x.b);
+  }
+
+  return { booksByRecent, arrows, parseFrontMatter, setFrontMatter, slugify, safePath, postSlug, renamePlan, rewriteImageLinks, seoulStamp, publishPath, nextChapter, readMinutes, imageName, bookFile };
+});
