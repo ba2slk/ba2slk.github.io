@@ -226,7 +226,7 @@ assert_contains assets/css/base.css '.thumb, .book-card .cover, .book .cover { t
 assert_not_contains assets/css/base.css 'border-top: 1px solid var(--line); }'
 
 # More room between home sections
-assert_contains assets/css/base.css '.page-hero ~ section ~ section .sec { margin-top: 40px; }'
+assert_contains assets/css/base.css '.page-hero ~ section ~ section .sec { margin-top: 64px; }'
 assert_contains assets/css/base.css '.page-hero { position: relative; height: 180px; }'
 assert_not_contains assets/css/base.css 'rgba(0, 0, 0, .13)'
 
