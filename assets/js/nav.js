@@ -23,6 +23,7 @@ if (typeof module !== 'undefined') module.exports = { easeOutCubic: easeOutCubic
 if (typeof document !== 'undefined') (function () {
   var reduce = matchMedia('(prefers-reduced-motion: reduce)');
   var OFFSET = 24;
+  var touch = matchMedia('(pointer: coarse)');
 
   function glideTo(target, duration, done, ease) {
     var start = window.scrollY;
@@ -59,16 +60,25 @@ if (typeof document !== 'undefined') (function () {
     // Drop ?b= now, but add the #hash only after the glide:
     // a hash present when the page finishes loading makes the browser jump there.
     history.replaceState(null, '', location.pathname);
+    var greet = function () {
+      book.classList.add('arrived');
+      setTimeout(function () { book.classList.remove('arrived'); }, 800);
+    };
+    var settle = function () { history.replaceState(null, '', location.pathname + '#' + slug); };
     var go = function () {
       setTimeout(function () {
+        if (touch.matches) {
+          // Touch devices: the browser's own smooth scroll runs off the main thread and stays fluid.
+          window.scrollTo({ top: window.scrollY + book.getBoundingClientRect().top - OFFSET, behavior: 'smooth' });
+          setTimeout(greet, 350);
+          setTimeout(settle, 900);
+          return;
+        }
         var GLIDE = 1300;
-        glideTo(book, GLIDE, function () { history.replaceState(null, '', location.pathname + '#' + slug); }, easeGlide);
+        glideTo(book, GLIDE, settle, easeGlide);
         // The glide covers ~95% of the way by 45% of its time; greet the book then
         // with its hover effect instead of waiting for the long landing to finish.
-        setTimeout(function () {
-          book.classList.add('arrived');
-          setTimeout(function () { book.classList.remove('arrived'); }, 800);
-        }, GLIDE * 0.45);
+        setTimeout(greet, GLIDE * 0.45);
       }, 120);
     };
     if (document.readyState === 'complete') go(); else addEventListener('load', go, { once: true });
