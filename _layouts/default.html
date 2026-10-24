@@ -17,7 +17,7 @@
     <ul class="search-results" id="search-results"></ul>
   </div>
 </div>
-<script src="{{ '/assets/js/search.js' | relative_url }}" data-index="{{ '/search.json' | relative_url }}"></script>
-<script src="{{ '/assets/js/nav.js' | relative_url }}"></script>
+<script src="{{ '/assets/js/search.js' | relative_url }}?v={{ site.time | date: '%s' }}" data-index="{{ '/search.json' | relative_url }}"></script>
+<script src="{{ '/assets/js/nav.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
 </body>
 </html>

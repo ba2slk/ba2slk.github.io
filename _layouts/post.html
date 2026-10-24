@@ -53,7 +53,7 @@ layout: default
 </nav>
 {%- endif %}
 
-<script src="{{ '/assets/js/toc.js' | relative_url }}"></script>
+<script src="{{ '/assets/js/toc.js' | relative_url }}?v={{ site.time | date: '%s' }}"></script>
 <script>
   document.querySelectorAll('.prose div[class*="language-"]').forEach(function (el) {
     var m = el.className.match(/language-(\S+)/);
