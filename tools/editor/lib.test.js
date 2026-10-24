@@ -136,3 +136,45 @@ test('booksByRecent puts the book with the newest note first, note-less books la
   ];
   assert.deepStrictEqual(lib.booksByRecent(books, posts).map((b) => b.slug), ['b', 'a', 'c']);
 });
+
+test('indentLines nests a list item under the text of the item above', () => {
+  const t = '3. Deadlock 피하기\n- 예시';
+  const r = lib.indentLines(t, t.length, t.length, 1);
+  assert.strictEqual(t.slice(0, r.from) + r.text + t.slice(r.to), '3. Deadlock 피하기\n   - 예시');
+  assert.strictEqual(r.s, t.length + 3);
+  // A 2-space child (not nested in Markdown) is fixed up to 3.
+  const u = '3. Deadlock\n  - 예시';
+  const r2 = lib.indentLines(u, u.length, u.length, 1);
+  assert.strictEqual(r2.text, '   - 예시');
+  // Under a bullet the child goes 2 deep; outdent goes back to the parent.
+  assert.strictEqual(lib.indentLines('- a\n- b', 6, 6, 1).text, '  - b');
+  assert.strictEqual(lib.indentLines('3. a\n   - b', 10, 10, -1).text, '- b');
+});
+
+test('indentLines moves a selected block together, keeping its shape', () => {
+  const t = '1. a\n- b\n  - c';
+  const r = lib.indentLines(t, 5, t.length, 1);
+  assert.strictEqual(r.text, '   - b\n     - c');
+  assert.strictEqual(lib.indentLines(r.text, 0, r.text.length, -1).text, '- b\n  - c');
+});
+
+test('continueList carries the marker to the next line', () => {
+  assert.deepStrictEqual(lib.continueList('3. foo'), { insert: '\n4. ' });
+  assert.deepStrictEqual(lib.continueList('   - foo'), { insert: '\n   - ' });
+  assert.deepStrictEqual(lib.continueList('- [x] done'), { insert: '\n- [ ] ' });
+  assert.deepStrictEqual(lib.continueList('- '), { line: '', nested: false });
+  assert.deepStrictEqual(lib.continueList('   - '), { line: '', nested: true });
+  assert.strictEqual(lib.continueList('plain'), null);
+});
+
+test('lists and line breaks inside a quote', () => {
+  assert.deepStrictEqual(lib.continueList('> 인용'), { insert: '\n> ' });
+  assert.deepStrictEqual(lib.continueList('> - a'), { insert: '\n> - ' });
+  assert.deepStrictEqual(lib.continueList('> - '), { line: '> ', nested: false });
+  assert.deepStrictEqual(lib.continueList('> '), { line: '' });
+  assert.deepStrictEqual(lib.continueList('> ', true), { insert: '\n> ' });
+  assert.strictEqual(lib.continueList('plain', true), null);
+  const t = '> 1. a\n> - b';
+  assert.strictEqual(lib.indentLines(t, t.length, t.length, 1).text, '>    - b');
+  assert.strictEqual(lib.indentLines('> 1. a\n>    - b', 15, 15, -1).text, '> - b');
+});

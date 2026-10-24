@@ -5,6 +5,12 @@ html, body { height: 100%; }
 body { overflow: hidden; scrollbar-gutter: auto; }
 button { font: inherit; color: inherit; }
 
+/* Thin scrollbars that only show while scrolling (app.js toggles .scrolling). Registering
+   the color lets it transition, so the thumb fades instead of popping. */
+@property --thumb { syntax: '<color>'; inherits: false; initial-value: transparent; }
+.side, #src, .preview { --thumb: transparent; scrollbar-width: thin; scrollbar-color: var(--thumb) transparent; transition: --thumb .6s ease; }
+.side.scrolling, #src.scrolling, .preview.scrolling { --thumb: color-mix(in srgb, var(--faint) 55%, transparent); transition-duration: .15s; }
+
 :root { --side-w: 248px; }
 .app {
   display: grid;
@@ -81,12 +87,12 @@ button { font: inherit; color: inherit; }
 #f-chapter { width: 5ch; }
 .fields select option { color: initial; }
 .app[data-kind="article"] .note-only, .app[data-kind="note"] .article-only { display: none; }
-#src { flex: 1; min-height: 0; resize: none; border: 0; outline: none; padding: 20px 28px 80px; font: 14px/1.75 var(--mono); color: var(--fg); background: var(--bg); tab-size: 2; }
+#src { flex: 1; min-height: 0; resize: none; border: 0; outline: none; padding: 20px 28px 50vh; font: 14px/1.75 var(--mono); color: var(--fg); background: var(--bg); tab-size: 2; }
 #src.drag { background: var(--quote-bg); }
 
 /* preview pane */
 .preview { grid-area: preview; overflow-y: auto; }
-.preview-inner { max-width: var(--content); margin: 0 auto; padding: 0 32px 120px; }
+.preview-inner { max-width: var(--content); margin: 0 auto; padding: 0 32px 50vh; }
 .preview .post-head { padding-top: 40px; }
 .preview .meta-book { cursor: default; }
 
@@ -139,8 +145,8 @@ dialog input.mono { font-family: var(--mono); font-size: 13px; }
   .actions-bar { gap: 10px; }
   .title-input { font-size: 21px; padding: 20px 16px 4px; }
   .fields { padding: 4px 16px 12px; }
-  #src { padding: 16px 16px 80px; font-size: 13.5px; }
-  .preview-inner { padding: 0 16px 80px; }
+  #src { padding: 16px 16px 50vh; font-size: 13.5px; }
+  .preview-inner { padding: 0 16px 50vh; }
 }
 
 @media (prefers-reduced-motion: reduce) {

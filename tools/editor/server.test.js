@@ -8,12 +8,13 @@ const { createServer } = require('./server.js');
 
 const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
-async function withServer(fn) {
+async function withServer(fn, opts) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'editor-'));
   for (const d of ['_posts', '_books', 'assets/css']) fs.mkdirSync(path.join(root, d), { recursive: true });
   fs.writeFileSync(path.join(root, '_books/b.md'), '---\ntitle: Book B\nauthor: Kim\n---\n');
   fs.writeFileSync(path.join(root, '_posts/2026-01-02-n1.md'), '---\ntitle: N1\nbook: b\nchapter: 2\n---\nx\n');
-  const server = createServer(root);
+  if (opts && opts.setup) opts.setup(root);
+  const server = createServer(root, opts);
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${server.address().port}`;
   const call = async (method, url, body) => {
@@ -157,3 +158,32 @@ test('a book with notes cannot be deleted; an empty one is removed with its cove
   assert.ok(!exists('_books/lonely.md'));
   assert.ok(!exists('assets/img/books/lonely.png'));
 }));
+
+test('publish with git commits only that post and pushes it', () => {
+  const { execFileSync } = require('child_process');
+  const remote = fs.mkdtempSync(path.join(os.tmpdir(), 'editor-remote-'));
+  const git = (cwd, ...a) => execFileSync('git', a, { cwd, encoding: 'utf8' }).trim();
+  git(remote, 'init', '--quiet', '--bare');
+  const setup = (root) => {
+    git(root, 'init', '--quiet', '-b', 'main');
+    git(root, 'config', 'user.email', 't@t'); git(root, 'config', 'user.name', 't');
+    git(root, 'remote', 'add', 'origin', remote);
+    fs.mkdirSync(path.join(root, '_drafts'));
+    fs.writeFileSync(path.join(root, '_drafts/p.md'), '---\ntitle: P\nbook: b\n---\nbody\n');
+    git(root, 'add', '.'); git(root, 'commit', '--quiet', '-m', 'init');
+    git(root, 'push', '--quiet', '-u', 'origin', 'main');
+    fs.writeFileSync(path.join(root, 'other.txt'), 'unrelated');
+    git(root, 'add', 'other.txt'); // staged, but must stay out of the publish commit
+    fs.mkdirSync(path.join(root, 'assets/img/posts/p'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'assets/img/posts/p/a.png'), 'x');
+  };
+  return withServer(async ({ root, call }) => {
+    const r = await call('POST', '/api/publish', { path: '_drafts/p.md' });
+    assert.strictEqual(r.json.git, 'pushed');
+    const files = git(root, 'show', '--name-status', '--format=%s', 'HEAD').split('\n');
+    assert.strictEqual(files[0], 'feat: add post P');
+    assert.deepStrictEqual(files.slice(1).filter(Boolean).sort(), ['A\t' + r.json.path, 'A\tassets/img/posts/p/a.png', 'D\t_drafts/p.md'].sort());
+    assert.strictEqual(git(root, 'status', '--porcelain'), 'A  other.txt');
+    assert.strictEqual(git(remote, 'rev-parse', 'main'), git(root, 'rev-parse', 'HEAD'));
+  }, { git: true, setup }).finally(() => fs.rmSync(remote, { recursive: true, force: true }));
+});

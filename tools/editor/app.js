@@ -241,7 +241,15 @@
     const { data } = L.parseFrontMatter(cur.raw);
     const book = cur.kind === 'note' && books.find((b) => b.slug === $('f-book').value);
     $('p-title').textContent = $('f-title').value || 'Untitled';
-    const html = L.arrows(marked.parse($('src').value));
+    // Render block by block so each preview block knows where it starts in the source (for scroll sync).
+    const tokens = marked.lexer($('src').value);
+    let at = 0;
+    const html = tokens.map((t) => {
+      const start = at;
+      at += t.raw.length;
+      if (t.type === 'space') return '';
+      return `<span data-src="${start}" hidden></span>` + L.arrows(marked.parser(Object.assign([t], { links: tokens.links })));
+    }).join('');
     const date = (data.date || new Date().toISOString()).slice(0, 10);
     const meta = [`<time>${date}</time>`, `<span>${L.readMinutes(html)}m</span>`];
     if (book) meta.push(`<span class="meta-book"></span>`);
@@ -262,7 +270,144 @@
       wrap.appendChild(pre);
       if (window.hljs && hljs.getLanguage(lang)) code.innerHTML = hljs.highlight(code.textContent, { language: lang }).value;
     });
+    // Move each marker onto the block after it, so the markers don't disturb margins.
+    body.querySelectorAll('span[data-src]').forEach((s) => {
+      const el = s.nextElementSibling;
+      if (el && !el.dataset.src) el.dataset.src = s.dataset.src;
+      s.remove();
+    });
+    anchors = null;
   }
+
+  // ---------- scroll sync ----------
+  // anchors: [srcY, previewY] pairs (content coordinates), one per block, ascending.
+  let anchors = null;
+  function buildAnchors() {
+    const ta = $('src'), pv = $('preview');
+    const cs = getComputedStyle(ta);
+    // An off-screen copy of the textarea with markers at each block start tells us where wrapped text lands.
+    const mirror = document.createElement('div');
+    ['font', 'letterSpacing', 'tabSize', 'paddingLeft', 'paddingRight', 'paddingTop'].forEach((k) => { mirror.style[k] = cs[k]; });
+    Object.assign(mirror.style, { position: 'absolute', visibility: 'hidden', top: '0', left: '-9999px', boxSizing: 'border-box', width: ta.clientWidth + 'px', whiteSpace: 'pre-wrap', overflowWrap: 'break-word' });
+    const blocks = [...$('p-body').querySelectorAll('[data-src]')];
+    const text = ta.value;
+    let last = 0;
+    const marks = blocks.map((el) => {
+      const i = Number(el.dataset.src);
+      mirror.append(text.slice(last, i));
+      last = i;
+      return mirror.appendChild(document.createElement('span'));
+    });
+    mirror.append(text.slice(last));
+    document.body.appendChild(mirror);
+    const top = pv.getBoundingClientRect().top - pv.scrollTop;
+    const pairs = [[0, 0]];
+    blocks.forEach((el, k) => pairs.push([marks[k].offsetTop, el.getBoundingClientRect().top - top]));
+    pairs.push([ta.scrollHeight, pv.scrollHeight]);
+    mirror.remove();
+    // Keep it monotonic in both axes so it can be inverted.
+    anchors = pairs.filter((p, i) => i === 0 || (p[0] >= pairs[i - 1][0] && p[1] >= pairs[i - 1][1]));
+  }
+  // Piecewise-linear map from coordinate `a` to `b` (0 = source, 1 = preview).
+  function mapY(y, a) {
+    const b = 1 - a;
+    for (let i = 1; i < anchors.length; i++) {
+      const p = anchors[i - 1], q = anchors[i];
+      if (y <= q[a] || i === anchors.length - 1) return q[a] === p[a] ? p[b] : p[b] + (Math.min(y, q[a]) - p[a]) * (q[b] - p[b]) / (q[a] - p[a]);
+    }
+    return y;
+  }
+  let syncing = null;
+  function sync(from) {
+    if (syncing === from) { syncing = null; return; }
+    if (!cur || $('preview').offsetParent === null || $('write').offsetParent === null) return;
+    if (!anchors) buildAnchors();
+    const ta = $('src'), pv = $('preview');
+    // Line up the block at the top of the textarea with the same screen height in the preview.
+    const gap = ta.getBoundingClientRect().top - pv.getBoundingClientRect().top;
+    const to = from === ta ? pv : ta;
+    const y = from === ta ? mapY(ta.scrollTop, 0) - gap : mapY(pv.scrollTop + gap, 1);
+    const max = to.scrollHeight - to.clientHeight;
+    // At either end, pin the other pane to the same end.
+    const want = from.scrollTop <= 0 ? 0 : from.scrollTop >= from.scrollHeight - from.clientHeight - 1 ? max : Math.round(Math.max(0, Math.min(max, y)));
+    if (Math.abs(to.scrollTop - want) < 1) return;
+    syncing = to;
+    to.scrollTop = want;
+  }
+  // Show the scrollbar while a pane scrolls, then let it fade out.
+  ['side', 'src', 'preview'].forEach((id) => {
+    let t;
+    $(id).addEventListener('scroll', (e) => {
+      e.target.classList.add('scrolling');
+      clearTimeout(t);
+      t = setTimeout(() => e.target.classList.remove('scrolling'), 800);
+    });
+  });
+  $('src').addEventListener('scroll', () => sync($('src')));
+  $('preview').addEventListener('scroll', () => sync($('preview')));
+  addEventListener('resize', () => { anchors = null; });
+  // Images change the preview height once they load.
+  $('p-body').addEventListener('load', () => { anchors = null; }, true);
+
+  // ---------- formatting shortcuts ----------
+  // execCommand keeps the textarea's undo history (and fires `input`, so it saves).
+  function replaceSel(text, selStart, selEnd) {
+    const ta = $('src');
+    const base = ta.selectionStart;
+    if (!document.execCommand('insertText', false, text)) { ta.setRangeText(text, ta.selectionStart, ta.selectionEnd); ta.dispatchEvent(new Event('input')); }
+    ta.setSelectionRange(base + selStart, base + selEnd);
+  }
+  function wrap(mark) {
+    const ta = $('src');
+    const s = ta.selectionStart, e = ta.selectionEnd, v = ta.value, n = mark.length;
+    const sel = v.slice(s, e);
+    if (v.slice(s - n, s) === mark && v.slice(e, e + n) === mark) {
+      // Already wrapped: take the marks off.
+      ta.setSelectionRange(s - n, e + n);
+      replaceSel(sel, 0, sel.length);
+    } else if (sel.length > 2 * n && sel.startsWith(mark) && sel.endsWith(mark)) {
+      replaceSel(sel.slice(n, -n), 0, sel.length - 2 * n);
+    } else replaceSel(mark + sel + mark, n, n + sel.length);
+  }
+  function link() {
+    const ta = $('src');
+    const sel = ta.value.slice(ta.selectionStart, ta.selectionEnd);
+    // Select the url part so it can be typed over right away.
+    replaceSel(`[${sel}](url)`, sel.length + 3, sel.length + 6);
+  }
+  // Ctrl/Cmd + key; strikethrough is Ctrl/Cmd + Shift + X.
+  const shortcuts = { b: () => wrap('**'), i: () => wrap('*'), '`': () => wrap('`'), k: link, 'shift+x': () => wrap('~~') };
+  // Replace [from, to) with text (undoable), then select [s, e).
+  function replaceRange(from, to, text, s, e) {
+    const ta = $('src');
+    ta.setSelectionRange(from, to);
+    if (!(text ? document.execCommand('insertText', false, text) : document.execCommand('delete'))) { ta.setRangeText(text, from, to); ta.dispatchEvent(new Event('input')); }
+    ta.setSelectionRange(s, e);
+  }
+  // Lists: Tab / Shift+Tab nest and un-nest, Enter continues the list, Enter on an empty item ends it.
+  $('src').addEventListener('keydown', (e) => {
+    if (e.isComposing || e.metaKey || e.ctrlKey || e.altKey) return;
+    const ta = $('src'), v = ta.value, s = ta.selectionStart, end = ta.selectionEnd;
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const r = L.indentLines(v, s, end, e.shiftKey ? -1 : 1);
+      if (r.text !== v.slice(r.from, r.to)) replaceRange(r.from, r.to, r.text, r.s, r.e);
+    } else if (e.key === 'Enter' && s === end) {
+      const from = v.lastIndexOf('\n', s - 1) + 1;
+      let to = v.indexOf('\n', s); if (to < 0) to = v.length;
+      const c = L.continueList(v.slice(from, to), e.shiftKey);
+      if (!c) return;
+      e.preventDefault();
+      if (c.insert) { replaceRange(s, s, c.insert, s + c.insert.length, s + c.insert.length); return; }
+      const r = c.nested ? L.indentLines(v, s, s, -1) : { from, to, text: c.line };
+      replaceRange(r.from, r.to, r.text, r.from + r.text.length, r.from + r.text.length);
+    }
+  });
+  $('src').addEventListener('keydown', (e) => {
+    if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+    const fn = shortcuts[(e.shiftKey ? 'shift+' : '') + e.key.toLowerCase()];
+    if (fn) { e.preventDefault(); fn(); }
+  });
 
   // ---------- archive / delete ----------
   function showActions() {
@@ -492,7 +637,7 @@
       const r = await api('/api/publish', { path: cur.path });
       await loadLists();
       await open(r.path);
-      status('Published → ' + r.path);
+      status('Published → ' + r.path + (r.git ? ' · ' + r.git : ''), !!r.git && r.git !== 'pushed');
     } catch (e) { status('Publish failed: ' + e.message, true); }
   };
   window.addEventListener('beforeunload', (e) => { if (cur && compose() !== cur.raw && cur.path) { save(); e.preventDefault(); } });

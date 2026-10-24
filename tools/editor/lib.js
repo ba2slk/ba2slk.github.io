@@ -121,6 +121,70 @@
     return `---\n${['title', 'author', 'publisher', 'cover', 'description', 'link'].map(line).join('\n')}\n---\n`;
   }
 
+  // ---------- list editing (Obsidian-style) ----------
+  // Lines may sit inside a quote: the `> ` prefix is kept as is and the list rules apply after it.
+  const QUOTE = /^(?:> ?)*/;
+  const split = (line) => { const q = QUOTE.exec(line)[0]; return [q, line.slice(q.length)]; };
+  // indent, marker ("- ", "3. ", "- [ ] "), rest of the line.
+  const LIST = /^( *)((?:[-*+]|\d+[.)]) (?:\[[ xX]\] )?)(.*)$/;
+  const listLine = (body) => { const m = LIST.exec(body); return m && { indent: m[1].length, marker: m[2], rest: m[3] }; };
+  const lead = (body) => body.match(/^ */)[0].length;
+
+  // Indent a list line under the item above it: the child starts where the parent's text starts,
+  // so `3. Foo` gets 3 spaces (2 would not nest in Markdown). Outdent goes back to the parent's level.
+  function listIndentFor(lines, i, dir) {
+    const [q, body] = split(lines[i]);
+    const cur = lead(body);
+    for (let j = i - 1; j >= 0; j--) {
+      const [pq, pb] = split(lines[j]);
+      if (pq.trim() !== q.trim()) break; // left this quote (or entered one)
+      const p = listLine(pb);
+      if (!p) { if (pb.trim() && !/^ /.test(pb)) break; continue; }
+      if (dir > 0 && p.indent <= cur) { const t = p.indent + p.marker.length; return t > cur ? t : cur + 2; }
+      if (dir < 0 && p.indent < cur) return p.indent;
+    }
+    return dir > 0 ? cur + 2 : 0;
+  }
+
+  // Tab / Shift+Tab over the lines touched by the selection. Returns the replacement for [from, to).
+  function indentLines(text, s, e, dir) {
+    const from = text.lastIndexOf('\n', s - 1) + 1;
+    let to = text.indexOf('\n', e > s && text[e - 1] === '\n' ? e - 1 : e);
+    if (to < 0) to = text.length;
+    const before = text.slice(0, from).split('\n').slice(0, -1);
+    const lines = text.slice(from, to).split('\n');
+    // Every line moves by the same amount as the first, so nested children keep their shape.
+    const first = lead(split(lines[0])[1]);
+    const delta = listIndentFor(before.concat(lines), before.length, dir) - first;
+    const out = lines.map((l) => {
+      const [q, body] = split(l);
+      if (!body.trim()) return l;
+      const n = lead(body);
+      return q + ' '.repeat(Math.max(0, n + delta)) + body.slice(n);
+    }).join('\n');
+    const shift = Math.max(-first, delta);
+    return { from, to, text: out, s: Math.max(from, s + shift), e: e + out.length - (to - from) };
+  }
+
+  // Enter in a list item or quote. Returns { insert } to add at the caret, { line, nested } to
+  // replace an empty item/quote line with (ending it), or null to leave Enter alone.
+  // `soft` (Shift+Enter) is a plain line break that stays inside the quote, so a quote can hold
+  // an empty line.
+  function continueList(line, soft) {
+    const [q, body] = split(line);
+    const qq = q && (q.endsWith(' ') ? q : q + ' ');
+    if (soft) return q ? { insert: '\n' + qq } : null;
+    const m = listLine(body);
+    if (!m) {
+      if (!q) return null;
+      return body.trim() ? { insert: '\n' + qq } : { line: '' };
+    }
+    if (!m.rest.trim()) return { line: q.trimEnd() ? qq : '', nested: m.indent > 0 };
+    const n = /^(\d+)([.)])/.exec(m.marker);
+    const marker = n ? `${Number(n[1]) + 1}${n[2]} ` : m.marker.replace(/\[[xX]\]/, '[ ]');
+    return { insert: '\n' + qq + ' '.repeat(m.indent) + marker };
+  }
+
   // Same as _plugins/arrows.rb: `->` / `<-` outside code become → / ←.
   function arrows(html) {
     return String(html).split(/(<pre[\s>][\s\S]*?<\/pre>|<code[\s>][\s\S]*?<\/code>)/).map((part, i) =>
@@ -142,5 +206,5 @@
     }).map((x) => x.b);
   }
 
-  return { booksByRecent, arrows, parseFrontMatter, setFrontMatter, slugify, safePath, postSlug, renamePlan, rewriteImageLinks, seoulStamp, publishPath, nextChapter, readMinutes, imageName, bookFile };
+  return { indentLines, continueList, booksByRecent, arrows, parseFrontMatter, setFrontMatter, slugify, safePath, postSlug, renamePlan, rewriteImageLinks, seoulStamp, publishPath, nextChapter, readMinutes, imageName, bookFile };
 });

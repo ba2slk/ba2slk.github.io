@@ -3,6 +3,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 const lib = require('./lib.js');
 
 const WRITABLE = { post: ['_posts', '_drafts'], img: ['assets/img/posts'], book: ['_books'], cover: ['assets/img/books'] };
@@ -12,7 +13,8 @@ class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
 
-function createServer(root) {
+// opts.git: commit and push on publish (off in tests, which run outside a repo).
+function createServer(root, opts = {}) {
   const abs = (rel, allowed) => lib.safePath(root, rel, allowed);
   const mtime = (file) => fs.statSync(file).mtimeMs;
 
@@ -23,6 +25,35 @@ function createServer(root) {
       const { data } = lib.parseFrontMatter(fs.readFileSync(path.join(d, f), 'utf8'));
       return { path: `${dir}/${f}`, slug: lib.postSlug(f), data };
     });
+  }
+
+  // Commit just this post (its draft's removal, its images, its book and cover) and push.
+  // Other changes in the tree are left alone. Returns a short status; never throws, so a
+  // git problem never undoes the publish.
+  function commitAndPush(draftRel, postRel) {
+    const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', timeout: 60000, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } });
+    try {
+      const text = fs.readFileSync(path.join(root, postRel), 'utf8');
+      const { data } = lib.parseFrontMatter(text);
+      const paths = [postRel, `assets/img/posts/${lib.postSlug(postRel)}`];
+      if (data.book) {
+        const bookRel = `_books/${data.book}.md`;
+        paths.push(bookRel);
+        const cover = fs.existsSync(path.join(root, bookRel)) && lib.parseFrontMatter(fs.readFileSync(path.join(root, bookRel), 'utf8')).data.cover;
+        if (cover) paths.push(cover.replace(/^\//, ''));
+      }
+      const present = paths.filter((p) => fs.existsSync(path.join(root, p)));
+      git('add', '--', ...present);
+      // A draft that was committed before: commit its removal too.
+      if (git('ls-files', '--', draftRel).trim()) present.push(draftRel);
+      if (!git('status', '--porcelain', '--', ...present).trim()) return 'nothing to commit';
+      // Commit only these paths, even if other things are staged.
+      git('commit', '--quiet', '-m', `feat: add post ${data.title || lib.postSlug(postRel)}`, '--', ...present);
+      git('push', '--quiet');
+      return 'pushed';
+    } catch (e) {
+      return 'git failed: ' + String(e.stderr || e.message).trim().split('\n').pop();
+    }
   }
 
   function decode(dataUrl) {
@@ -99,7 +130,7 @@ function createServer(root) {
       if (fs.existsSync(to)) throw new HttpError(400, 'already published today with that slug');
       fs.writeFileSync(to, lib.setFrontMatter(fs.readFileSync(from, 'utf8'), { date: lib.seoulStamp(now) }));
       fs.unlinkSync(from);
-      return { path: toRel, mtime: mtime(to) };
+      return { path: toRel, mtime: mtime(to), git: opts.git ? commitAndPush(rel, toRel) : null };
     },
 
     'POST /api/upload': ({ slug, name, data }) => {
@@ -209,7 +240,7 @@ module.exports = { createServer };
 if (require.main === module) {
   const root = path.resolve(__dirname, '../..');
   const port = Number(process.env.PORT) || 4100;
-  createServer(root)
+  createServer(root, { git: true })
     .on('error', (e) => {
       if (e.code !== 'EADDRINUSE') throw e;
       console.error(`Port ${port} is already in use. The editor may already be running at http://127.0.0.1:${port}\nOr start on another port: PORT=4101 bash tools/editor.sh`);

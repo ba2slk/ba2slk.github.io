@@ -11,7 +11,8 @@ const R = fs.mkdtempSync(path.join(os.tmpdir(), 'editor-e2e-'));
 for (const d of ['_posts', '_books', 'assets']) fs.cpSync(path.join(REPO, d), path.join(R, d), { recursive: true });
 // Keep a fixed fixture set: the ch2-5 notes and their one book.
 for (const f of fs.readdirSync(path.join(R, '_posts'))) {
-  const keep = /^book: practical-be-knowledge-for-juniors$/m.test(fs.readFileSync(path.join(R, '_posts', f), 'utf8'));
+  const text = fs.readFileSync(path.join(R, '_posts', f), 'utf8');
+  const keep = /^book: practical-be-knowledge-for-juniors$/m.test(text) && /^chapter: [2-5]$/m.test(text);
   if (!keep) fs.rmSync(path.join(R, '_posts', f));
 }
 for (const f of fs.readdirSync(path.join(R, '_books'))) if (f !== 'practical-be-knowledge-for-juniors.md') fs.rmSync(path.join(R, '_books', f));
@@ -157,6 +158,57 @@ const check = (name, cond, extra) => { if (cond) { ok++; console.log('PASS', nam
   await js(`document.getElementById('delete').click()`); await sleep(1000);
   check('draft delete warns it cannot be undone', dialogs.some((m) => m.includes('cannot be recovered')), JSON.stringify(dialogs));
   check('draft deleted and editor emptied', !exists('_drafts/to-delete.md') && await js(`return !document.getElementById('empty').hidden`));
+
+  // 8b. Scroll sync: the block at the editor's top sits at the same screen height in the preview, both ways.
+  await go('http://127.0.0.1:4199/?open=' + ch3); await sleep(300);
+  const synced = await js(`
+    const ta = document.getElementById('src'), pv = document.getElementById('preview');
+    const blocks = [...document.querySelectorAll('#p-body [data-src]')];
+    ta.scrollTop = ta.scrollHeight / 2;
+    await new Promise(r => setTimeout(r, 200));
+    const moved = pv.scrollTop > 0;
+    pv.scrollTop = 0; await new Promise(r => setTimeout(r, 200));
+    return { moved, back: ta.scrollTop === 0, n: blocks.length };`);
+  check('scroll sync follows in both directions', synced.moved && synced.back && synced.n > 5, JSON.stringify(synced));
+
+  // 8c. Formatting shortcuts wrap and unwrap the selection.
+  await js(`document.getElementById('new-article').click()`); await sleep(200);
+  const fmt = await js(`
+    const ta = document.getElementById('src'); ta.focus(); ta.value = 'hello world'; ta.setSelectionRange(6, 11);
+    const key = (k, shift) => ta.dispatchEvent(new KeyboardEvent('keydown', { key: k, ctrlKey: true, shiftKey: !!shift, bubbles: true, cancelable: true }));
+    key('b'); const a = ta.value + '|' + ta.value.slice(ta.selectionStart, ta.selectionEnd);
+    key('b'); const b = ta.value;
+    key('i'); const c = ta.value; key('i');
+    key('\`'); const f = ta.value; key('\`');
+    key('X', true); const d = ta.value; key('x', true);
+    key('k'); const e = ta.value + '|' + ta.value.slice(ta.selectionStart, ta.selectionEnd);
+    return [a, b, c, f, d, e];`);
+  check('formatting shortcuts', JSON.stringify(fmt) === JSON.stringify(['hello **world**|world', 'hello world', 'hello *world*', 'hello \`world\`', 'hello ~~world~~', 'hello [world](url)|url']), JSON.stringify(fmt));
+  // 8d. Lists, with real key presses: Enter continues, Tab nests under the item's text, Enter on empty ends.
+  await js(`const ta = document.getElementById('src'); ta.focus(); ta.value = '3. Deadlock'; ta.setSelectionRange(11, 11);`);
+  const press = async (key, mods = 0) => {
+    const code = { Enter: 13, Tab: 9 }[key];
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key, code: key, windowsVirtualKeyCode: code, modifiers: mods, ...(key === 'Enter' ? { text: '\r' } : {}) });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key, code: key, windowsVirtualKeyCode: code, modifiers: mods });
+  };
+  const typeText = (t) => send('Input.insertText', { text: t });
+  await press('Enter'); await press('Tab');
+  await js(`const ta = document.getElementById('src'); const v = ta.value; ta.setSelectionRange(v.length - 3, v.length); document.execCommand('insertText', false, '- ');`);
+  await typeText('예시'); await press('Enter'); await typeText('둘'); await press('Enter'); await press('Enter');
+  const listText = await js(`return document.getElementById('src').value`);
+  check('list keys: continue, nest under item text, end on empty', listText === '3. Deadlock\n   - 예시\n   - 둘\n- ', JSON.stringify(listText));
+  check('nested list renders nested', await js(`return !!document.querySelector('#p-body ol > li > ul > li')`));
+  await press('Tab', 8); // Shift+Tab at top level: nothing to un-nest
+  check('shift+tab at top level is a no-op', await js(`return document.getElementById('src').value`) === listText);
+
+  // 8e. Quotes: Enter continues `> `, lists work inside, Shift+Enter leaves an empty quote line, Enter on empty exits.
+  await js(`const ta = document.getElementById('src'); ta.focus(); ta.value = ''; ta.dispatchEvent(new Event('input'))`);
+  await typeText('> 인용'); await press('Enter'); await typeText('- a'); await press('Enter'); await press('Enter');
+  await press('Enter', 8); await typeText('끝'); await press('Enter'); await press('Enter'); await typeText('밖');
+  const quoteText = await js(`return document.getElementById('src').value`);
+  check('quote keys', quoteText === '> 인용\n> - a\n> \n> 끝\n밖', JSON.stringify(quoteText));
+  check('quote renders one blockquote with a list and two paragraphs', await js(`const q = document.querySelectorAll('#p-body blockquote'); return q.length === 1 && !!q[0].querySelector('ul > li') && q[0].querySelectorAll('p').length === 2`));
+  await js(`document.getElementById('src').value = ''; document.getElementById('src').dispatchEvent(new Event('input'))`);
 
   // 9. Sidebar: drag to resize, fold and unfold, remembered across reloads.
   await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
