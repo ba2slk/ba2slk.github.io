@@ -76,7 +76,7 @@ main { flex: 1 0 auto; }
 
 /* footer */
 .site-footer {
-  margin-top: 80px;
+  margin-top: 128px;
   border-top: 1px solid var(--line);
   padding: 24px 0 48px;
   display: flex;
@@ -130,6 +130,7 @@ main { flex: 1 0 auto; }
   .sig { height: 48px; }
   .page-hero { height: 140px; }
   .page-hero ~ section ~ section .sec { margin-top: 80px; }
+  .site-footer { margin-top: 80px; }
 }
 
 .home-hero .hero-art { display: block; height: auto; }
