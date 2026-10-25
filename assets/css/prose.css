@@ -41,13 +41,14 @@
 
 .prose blockquote {
   margin: 18px 0;
-  padding: 14px 16px;
-  border-left: 3px solid var(--line-strong);
-  background: var(--quote-bg);
-  color: var(--muted);
-  border-radius: 0 6px 6px 0;
+  padding: 16px 20px;
+  background: var(--callout-bg);
+  color: var(--soft);
+  border-radius: 10px;
   line-height: 1.5;
 }
+/* Notion-style callout: a soft rounded box, no side rule; nested ones step back to the page color. */
+.prose blockquote blockquote { background: var(--bg); }
 /* Tighter lines + a clear gap, so a paragraph break reads differently from a line break. */
 .prose blockquote p { margin: 10px 0; }
 .prose blockquote > :first-child { margin-top: 0; }

@@ -19,7 +19,7 @@ if (typeof document !== 'undefined') (function () {
 
   var title = document.createElement('div');
   title.className = 'toc-title';
-  title.textContent = 'CONTENTS';
+  title.textContent = '목차';
   toc.appendChild(title);
 
   var links = [];

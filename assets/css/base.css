@@ -17,6 +17,7 @@
   --inline-code-bg: #f3f4f6;
   --inline-code-fg: #c2410c;
   --quote-bg: #f9fafb;
+  --callout-bg: #f4f3f0;
   --sans: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, monospace;
 }
@@ -222,7 +223,7 @@ main { flex: 1 0 auto; }
 
 /* toc */
 .toc { position: fixed; top: 140px; left: calc(50% + var(--content) / 2 + 32px); width: 200px; font-size: 13px; line-height: 1.6; max-height: calc(100vh - 180px); overflow-y: auto; }
-.toc-title { font-size: 11px; letter-spacing: .2em; color: var(--faint); font-weight: 700; margin-bottom: 10px; }
+.toc-title { font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 10px; }
 .toc a { display: block; color: var(--faint); padding: 3px 0 3px 12px; border-left: 1px solid var(--line-strong); }
 .toc a.sub { padding-left: 24px; }
 .toc a:hover { color: var(--accent); }
