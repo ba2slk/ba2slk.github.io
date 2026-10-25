@@ -1,5 +1,5 @@
 ---
-title: 2장. 느려진 서비스, 어디부터 봐야 할까
+title: "[2장] 느려진 서비스, 어디부터 봐야 할까"
 date: 2026-09-17 01:04:05 +0900
 categories: [Dev, Books]
 tags: [backend]

@@ -1,5 +1,5 @@
 ---
-title: "Item67: subprocess 모듈로 자식 프로세스 관리하기"
+title: "[Item 67] subprocess 모듈로 자식 프로세스 관리하기"
 book: effective-python
 chapter: 9
 date: 2026-10-25 21:58:11 +0900

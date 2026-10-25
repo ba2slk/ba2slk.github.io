@@ -1,5 +1,5 @@
 ---
-title: 4장. 외부 연동이 문제일 때 살펴봐야 할 것들
+title: "[4장] 외부 연동이 문제일 때 살펴봐야 할 것들"
 date: 2026-09-30 23:19:43 +0900
 categories: [Dev, Books]
 tags: [backend]

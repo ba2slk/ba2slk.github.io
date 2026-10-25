@@ -1,5 +1,5 @@
 ---
-title: 3장. 성능을 좌우하는 DB 설계와 쿼리
+title: "[3장] 성능을 좌우하는 DB 설계와 쿼리"
 date: 2026-09-21 19:12:24 +0900
 categories: [Dev, Books]
 tags: [backend]

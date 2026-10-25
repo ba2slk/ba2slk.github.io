@@ -1,5 +1,5 @@
 ---
-title: 5장. 비동기 연동
+title: "[5장] 비동기 연동"
 date: 2026-10-07 15:15:46 +0900
 categories: [Dev, Books]
 tags: [backend]

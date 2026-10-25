@@ -1,5 +1,5 @@
 ---
-title: "6장. 동시성, 데이터가 꼬이기 전에 잡아야 한다"
+title: "[6장] 동시성, 데이터가 꼬이기 전에 잡아야 한다"
 book: practical-be-knowledge-for-juniors
 chapter: 6
 date: 2026-10-25 03:33:37 +0900
