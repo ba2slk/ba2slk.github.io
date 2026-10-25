@@ -178,3 +178,20 @@ test('lists and line breaks inside a quote', () => {
   assert.strictEqual(lib.indentLines(t, t.length, t.length, 1).text, '>    - b');
   assert.strictEqual(lib.indentLines('> 1. a\n>    - b', 15, 15, -1).text, '> - b');
 });
+
+test('formatMarkdown fixes syntax slips and leaves code alone', () => {
+  const src = [
+    '#제목', '본문  ', '끝 ', '', '', '', '* a', '  + b', '>인용', '>> 깊게',
+    '문단', '```py', '#not a heading   ', '* x', '```', '뒤', '## 다음',
+  ].join('\n');
+  assert.strictEqual(lib.formatMarkdown(src), [
+    '# 제목', '', '본문  ', '끝', '', '- a', '  - b', '> 인용', '>> 깊게',
+    '문단', '', '```py', '#not a heading   ', '* x', '```', '', '뒤', '', '## 다음', '',
+  ].join('\n'));
+});
+
+test('formatMarkdown closes an unclosed fence and is idempotent', () => {
+  const once = lib.formatMarkdown('a\n~~~\ncode\n\n\n');
+  assert.strictEqual(once, 'a\n\n~~~\ncode\n~~~\n');
+  assert.strictEqual(lib.formatMarkdown(once), once);
+});

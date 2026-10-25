@@ -206,5 +206,41 @@
     }).map((x) => x.b);
   }
 
-  return { indentLines, continueList, booksByRecent, arrows, parseFrontMatter, setFrontMatter, slugify, safePath, postSlug, renamePlan, rewriteImageLinks, seoulStamp, publishPath, nextChapter, readMinutes, imageName, bookFile };
+  // Markdown formatter, like `ruff format` for posts: fixes syntax slips in place, never touches code.
+  // Space after `#` and `>`, `-` bullets, blank lines around headings and fences, one blank line max,
+  // trailing spaces off (a two-space hard break stays), an unclosed fence gets closed, one final newline.
+  function formatMarkdown(text) {
+    const out = [];
+    let fence = null; // the opening fence while inside a code block
+    let gap = false; // the previous block (heading, code) wants a blank line after it
+    const blank = () => { if (out.length && out[out.length - 1] !== '') out.push(''); };
+    for (const raw of text.split('\n')) {
+      if (fence) {
+        out.push(raw);
+        const m = raw.match(/^\s*(`{3,}|~{3,})\s*$/);
+        if (m && m[1][0] === fence[0] && m[1].length >= fence.length) { fence = null; gap = true; }
+        continue;
+      }
+      let l = raw.replace(/\s+$/, (ws) => (/^ {2,}$/.test(ws) && raw.trim() ? '  ' : ''));
+      if (gap) { gap = false; if (l !== '') out.push(''); }
+      const f = l.match(/^(\s*)(`{3,}|~{3,})/);
+      if (f) {
+        if (!f[1]) blank();
+        fence = f[2];
+        out.push(l);
+        continue;
+      }
+      l = l.replace(/^(#{1,6})(?=[^#\s])/, '$1 ')
+        .replace(/^(\s*(?:> ?)*>)(?=[^\s>])/, '$1 ')
+        .replace(/^(\s*)[*+](?= )/, '$1-');
+      if (l === '') { blank(); continue; }
+      if (/^#{1,6} /.test(l)) { blank(); out.push(l); gap = true; continue; }
+      out.push(l);
+    }
+    if (fence) { while (out[out.length - 1] === '') out.pop(); out.push(fence); }
+    while (out.length && out[out.length - 1] === '') out.pop();
+    return out.join('\n') + '\n';
+  }
+
+  return { formatMarkdown, indentLines, continueList, booksByRecent, arrows, parseFrontMatter, setFrontMatter, slugify, safePath, postSlug, renamePlan, rewriteImageLinks, seoulStamp, publishPath, nextChapter, readMinutes, imageName, bookFile };
 });

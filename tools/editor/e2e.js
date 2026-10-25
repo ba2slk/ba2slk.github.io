@@ -218,6 +218,9 @@ const check = (name, cond, extra) => { if (cond) { ok++; console.log('PASS', nam
   await js(`document.getElementById('src').blur(); document.querySelector('#src .cm-content').blur()`);
   await sleep(200);
   check('code blocks get copy buttons', await js(`return !!document.querySelector('#src .cm-codeblock .copy-btn') && !!document.querySelector('#p-body .has-copy > .copy-btn')`));
+  await js(`const ta = document.getElementById('src'); ta.value = '#제목\\n* a'; ta.dispatchEvent(new Event('input')); document.getElementById('format-btn').click()`);
+  check('format button fixes markdown', await js(`return document.getElementById('src').value`) === '# 제목\n\n- a\n');
+  await sleep(100);
   await js(`document.getElementById('src').value = ''; document.getElementById('src').dispatchEvent(new Event('input'))`);
 
   // 9. Sidebar: drag to resize, fold and unfold, remembered across reloads.

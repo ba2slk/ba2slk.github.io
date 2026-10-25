@@ -388,12 +388,22 @@ import { createEditor } from '/editor/live.js';
     replaceRange(r.from, r.to, r.text, r.from + r.text.length, r.from + r.text.length);
     return true;
   }
+  // Format the whole post (Shift+Alt+F); the cursor stays on its line.
+  function format() {
+    const v = ed.view, doc = v.state.doc, text = doc.toString(), out = L.formatMarkdown(text);
+    if (out === text) return true;
+    const at = doc.lineAt(v.state.selection.main.head), col = v.state.selection.main.head - at.from;
+    const lines = out.split('\n'), n = Math.min(at.number, lines.length) - 1;
+    const head = lines.slice(0, n).join('\n').length + (n ? 1 : 0) + Math.min(col, lines[n].length);
+    v.dispatch({ changes: { from: 0, to: doc.length, insert: out }, selection: { anchor: head }, userEvent: 'input', scrollIntoView: true });
+    return true;
+  }
   const key = (k, fn) => ({ key: k, run: () => fn() !== false });
   const ed = createEditor($('src'), {
     onChange: () => { changed(); refreshImageOptions($('f-image').value); },
     keys: [
       key('Mod-b', () => wrap('**')), key('Mod-i', () => wrap('*')), key('Mod-`', () => wrap('`')), key('Mod-k', link), key('Mod-X', () => wrap('~~')),
-      key('Tab', () => indent(1)), key('Shift-Tab', () => indent(-1)),
+      key('Shift-Alt-f', format), key('Tab', () => indent(1)), key('Shift-Tab', () => indent(-1)),
       key('Enter', () => enter(false)), key('Shift-Enter', () => enter(true)),
     ],
     handlers: {
@@ -432,6 +442,7 @@ import { createEditor } from '/editor/live.js';
   setLive(stored('raw') !== '1');
   setPane(stored('preview-pane') === '1');
   $('raw-btn').onclick = () => setLive(!ed.live);
+  $('format-btn').onclick = () => { format(); ed.view.focus(); };
   $('preview-btn').onclick = () => setPane(!app.classList.contains('with-preview'));
   document.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'e') { e.preventDefault(); setLive(!ed.live); } });
 
