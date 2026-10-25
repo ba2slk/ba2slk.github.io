@@ -31,12 +31,19 @@ if (typeof document !== 'undefined') (function () {
     if (reduce.matches) { window.scrollTo(0, end); if (done) done(); return; }
     var ms = duration || scrollDuration(Math.abs(end - start));
     var t0 = null;
+    // Let the user take over: any manual scroll input stops the glide.
+    var stopped = false;
+    var events = ['wheel', 'touchstart', 'keydown', 'mousedown'];
+    function stop() { stopped = true; }
+    events.forEach(function (ev) { addEventListener(ev, stop, { passive: true, once: true }); });
+    function cleanup() { events.forEach(function (ev) { removeEventListener(ev, stop); }); }
     function step(now) {
+      if (stopped) { cleanup(); return; }
       if (t0 === null) t0 = now;
       var t = Math.min(1, (now - t0) / ms);
       window.scrollTo(0, start + (end - start) * (ease || easeOutCubic)(t));
       if (t < 1) requestAnimationFrame(step);
-      else if (done) done();
+      else { cleanup(); if (done) done(); }
     }
     requestAnimationFrame(step);
   }

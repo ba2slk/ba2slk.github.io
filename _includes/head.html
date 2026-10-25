@@ -11,5 +11,12 @@
 <link rel="stylesheet" href="{{ '/assets/css/base.css' | relative_url }}?v={{ site.time | date: '%s' }}">
 <link rel="stylesheet" href="{{ '/assets/css/prose.css' | relative_url }}?v={{ site.time | date: '%s' }}">
 <link rel="stylesheet" href="{{ '/assets/css/syntax.css' | relative_url }}?v={{ site.time | date: '%s' }}">
+{%- unless page.layout == 'post' %}
+<link rel="preload" as="image" href="{{ '/assets/img/mountain-wide.jpg' | relative_url }}" fetchpriority="high">
+{%- endunless %}
+{%- if page.layout == 'home' %}
+<link rel="preload" as="image" href="{{ '/assets/img/mountain-line.webp' | relative_url }}">
+<link rel="preload" as="image" href="{{ '/assets/img/signature.webp' | relative_url }}">
+{%- endif %}
 {% feed_meta %}
 {% seo %}

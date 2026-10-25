@@ -76,7 +76,7 @@ print(f"{delta:.3} seconds passed.")  # 1.01 seconds passed.
 
 `communicate` 메서드를 통해 자식 프로세스가 I/O를 끝내고 종료될 때까지 의도적으로 blocked 하여 여러 자식 프로세스의 종료를 기다릴 수 있다.
 
-![](/assets/img/posts/concurrency-and-parallelism/1792932229382-image.png)
+![](/assets/img/posts/concurrency-and-parallelism/1792932229382-image.webp)
 
 ### 파이프
 

@@ -1,5 +1,9 @@
 <header class="site-header">
-  <a class="logo" href="{{ '/' | relative_url }}" aria-label="{{ site.title | escape }}"><img class="logo-mark" src="{{ '/assets/img/favicon/logo-mark.png' | relative_url }}" alt="" width="35" height="17"></a>
+  {%- if page.layout == 'home' %}
+  <span></span>{%- comment -%} the home hero already carries the signature {%- endcomment -%}
+  {%- else %}
+  <a class="logo" href="{{ '/' | relative_url }}" aria-label="{{ site.title | escape }}"><img class="logo-mark" src="{{ '/assets/img/signature.webp' | relative_url }}" alt="" width="640" height="182"></a>
+  {%- endif %}
   <nav class="site-nav">
     <div class="nav-links">
       <a href="{{ '/articles/' | relative_url }}">Articles</a>

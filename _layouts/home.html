@@ -1,10 +1,30 @@
 ---
 layout: default
 ---
-<header class="page-hero">
-  {% include hero-art.html %}
+<script>
+  try {
+    var nav = performance.getEntriesByType('navigation')[0];
+    if (!localStorage.getItem('intro-seen') || (nav && nav.type === 'reload')) {
+      document.documentElement.classList.add('intro');
+      localStorage.setItem('intro-seen', '1');
+    }
+  } catch (e) {}
+</script>
+<header class="page-hero home-hero">
+  <svg class="hero-art" viewBox="0 0 1400 312" aria-hidden="true">
+    <filter id="graphite" x="-10%" y="-20%" width="120%" height="140%"><feGaussianBlur stdDeviation="14"/></filter>
+    <mask id="sketch"><path class="sketch-stroke" d="M-60,350 L90,-40 L70,350 L220,-40 L200,350 L350,-40 L330,350 L480,-40 L460,350 L610,-40 L590,350 L740,-40 L720,350 L870,-40 L850,350 L1000,-40 L980,350 L1130,-40 L1110,350 L1260,-40 L1240,350 L1390,-40 L1370,350 L1520,-40" pathLength="1" fill="none" stroke="#fff" stroke-width="170" stroke-linejoin="round" filter="url(#graphite)"/></mask>
+    <mask id="shade"><path class="sketch-stroke shade-stroke" d="M-60,350 L90,-40 L70,350 L220,-40 L200,350 L350,-40 L330,350 L480,-40 L460,350 L610,-40 L590,350 L740,-40 L720,350 L870,-40 L850,350 L1000,-40 L980,350 L1130,-40 L1110,350 L1260,-40 L1240,350 L1390,-40 L1370,350 L1520,-40" pathLength="1" fill="none" stroke="#fff" stroke-width="170" stroke-linejoin="round" filter="url(#graphite)"/></mask>
+    <image class="sketch-shade" href="{{ '/assets/img/mountain-wide.jpg' | relative_url }}" width="1400" height="312" mask="url(#shade)"/>
+    <image class="sketch-line" href="{{ '/assets/img/mountain-line.webp' | relative_url }}" width="1400" height="312" mask="url(#sketch)"/>
+  </svg>
+  <h1 class="hero-title sig-title" aria-label="{{ site.title | escape }}">
+    <svg class="sig" viewBox="0 0 640 182" aria-hidden="true">
+      <mask id="sig-pen"><path class="sig-stroke" d="M0,165 L80,120 L111,86 L149,39 L169,13 L176,8 L175,17 L146,54 L118,90 L97.5,109 L82.5,142.5 L70,166 L80,145 L100,127.5 L122.5,112.5 L145,112.5 L150,125 L139,145 L115,160 L92.5,176 L89,181 L100,177.5 L127.5,157.5 L140,146 L165,136 L185,131 L200,119 L220,116 L226,122.5 L212.5,136 L192.5,152.5 L177.5,156 L180,145 L200,131 L220,131 L225,147.5 L247.5,158 L275,145 L278,102.5 L285,80 L310,64 L340,60 L352.5,70 L345,87.5 L320,115 L295,137.5 L270,155 L257.5,167.5 L274,159 L300,154 L330,149 L360,140 L387.5,131 L382.5,112.5 L380,102.5 L385,97.5 L389,106 L385,125 L375,140 L357.5,155 L351.5,166.5 L365,167.5 L382.5,152.5 L392.5,132.5 L425,117.5 L440,95 L475,46 L505,7.5 L516,4 L518,12.5 L505,37.5 L475,75 L440,100 L425,122.5 L422.5,150 L431,160 L452.5,150 L482.5,131 L515,92.5 L550,36 L569,22.5 L575,17.5 L570,30 L540,62.5 L515,95 L495,122.5 L480,147.5 L470,165 L485,131 L510,120 L537.5,102.5 L550,97.5 L549,106 L525,119 L509,125 L530,141 L560,157.5 L590,164 L620,159 L640,136" pathLength="1" fill="none" stroke="#fff" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/></mask>
+      <image href="{{ '/assets/img/signature.webp' | relative_url }}" width="640" height="182" mask="url(#sig-pen)"/>
+    </svg>
+  </h1>
 </header>
-<h1 class="page-title">{{ site.title | escape }}</h1>
 
 <section>
   {%- assign articles = site.posts | where_exp: "p", "p.book == nil" %}

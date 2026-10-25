@@ -36,7 +36,7 @@ layout: default
 <aside class="toc" id="toc"></aside>
 
 <article class="prose">
-{{ content }}
+{{ content | replace: '<img ', '<img loading="lazy" decoding="async" ' }}
 </article>
 
 

@@ -226,8 +226,8 @@ assert_contains assets/css/base.css '.thumb, .book-card .cover, .book .cover { t
 assert_not_contains assets/css/base.css 'border-top: 1px solid var(--line); }'
 
 # More room between home sections
-assert_contains assets/css/base.css '.page-hero ~ section ~ section .sec { margin-top: 64px; }'
-assert_contains assets/css/base.css '.page-hero { position: relative; height: 180px; }'
+assert_contains assets/css/base.css '.page-hero ~ section ~ section .sec { margin-top: 128px; }'
+assert_contains assets/css/base.css '.page-hero { position: relative; height: 200px; }'
 assert_not_contains assets/css/base.css 'rgba(0, 0, 0, .13)'
 
 # UI strings are short English (post content excluded)
@@ -249,14 +249,14 @@ done
 assert_not_contains $CH3 'class="hero-art"'
 
 # Home: no big name heading, the watermark is the hero (name kept for screen readers)
-assert_contains index.html '<h1 class="page-title">ba2slk&#39;s Blog</h1>'
+assert_contains index.html 'aria-label="ba2slk&#39;s Blog"'
 assert_not_contains index.html 'sr-only'
 
 # Books: no divider right under the page hero
-assert_contains assets/css/base.css '.page-hero + .page-title + .book { border-top: 0; }'
+assert_contains assets/css/base.css '.page-hero + .book { border-top: 0; }'
 
 # Same hero box on every non-post page so the watermark doesn't jump
-assert_contains index.html '<header class="page-hero">'
+assert_contains index.html '<header class="page-hero home-hero">'
 assert_not_contains index.html '<section class="hero">'
 
 # Page title sits below the hero image, not on top of it
@@ -312,15 +312,16 @@ assert_contains assets/css/prose.css '.prose li > p { margin: 0; }'
 assert_contains assets/css/prose.css '  line-height: 1.7;'
 
 # Logo shows the favicon mark next to the name
-assert_contains index.html '<img class="logo-mark" src="/assets/img/favicon/logo-mark.png"'
+assert_contains articles/index.html '<img class="logo-mark" src="/assets/img/signature.webp"'
 
 # Search: icon button only, no shortcut
 assert_contains index.html 'class="search-btn" id="search-open" aria-label="Search"><svg'
 assert_not_contains index.html '<kbd>'
 assert_not_contains assets/js/search.js "e.key.toLowerCase() === 'k'"
 
-# Top-left logo is the mark only
-assert_contains index.html 'class="logo" href="/" aria-label="ba2slk&#39;s Blog"><img class="logo-mark"'
+# Top-left logo is the signature, except on home where the hero carries it
+assert_contains articles/index.html 'class="logo" href="/" aria-label="ba2slk&#39;s Blog"><img class="logo-mark"'
+assert_not_contains index.html 'class="logo"'
 assert_not_contains index.html 'alt="" width="24" height="17">ba2slk</a>'
 
 # Text arrows render as real arrows, code stays untouched
@@ -367,7 +368,7 @@ assert_not_contains index.html 'href="/books/?b=check-archived"'
 grep -q 'No articles yet.' articles.md || fail "articles page has no empty state"
 
 # Covers get a soft shadow on hover
-assert_contains assets/css/base.css '.book-card:hover .cover, .book-cover:hover .cover { box-shadow: 0 8px 18px -6px rgba(0, 0, 0, .18); }'
+assert_contains assets/css/base.css '.book-card:hover .cover, .book-cover:hover .cover { box-shadow: 0 10px 22px -6px rgba(0, 0, 0, .22); }'
 
 # Every button and link hover uses the accent color
 for rule in '.site-nav a:hover { color: var(--accent); }' '.search-btn:hover { color: var(--accent);' '.sec a:hover { color: var(--accent); }' '.pager-btn:hover:not(:disabled) { color: var(--accent);' '.icon-link:hover { color: var(--accent); }'; do
@@ -379,7 +380,7 @@ grep -E ':hover[^{]*\{[^}]*color: var\(--strong\)' assets/css/base.css && fail "
 assert_contains assets/css/base.css '.pager a, .pager-btn { transition: color .25s ease, border-color .25s ease, background-color .25s ease, transform .25s ease; }'
 
 # After gliding to a book, its cover briefly shows the hover effect
-assert_contains assets/css/base.css '.book.arrived .cover { transform: scale(1.05); box-shadow: 0 8px 18px -6px rgba(0, 0, 0, .18); }'
+assert_contains assets/css/base.css '.book.arrived .cover { transform: scale(1.05); box-shadow: 0 10px 22px -6px rgba(0, 0, 0, .22); }'
 assert_contains assets/js/nav.js "book.classList.add('arrived')"
 
 # Kill switch for the old Chirpy service worker

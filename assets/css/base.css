@@ -64,7 +64,7 @@ main { flex: 1 0 auto; }
 }
 
 .logo { display: inline-flex; align-items: center; gap: 7px; font-size: 17px; font-weight: 700; color: var(--strong); }
-.logo-mark { display: block; width: auto; height: 17px; }
+.logo-mark { display: block; width: auto; height: 28px; }
 
 .site-nav { display: flex; align-items: center; gap: 26px; }
 .site-nav a:hover { color: var(--accent); }
@@ -95,8 +95,8 @@ main { flex: 1 0 auto; }
 
 /* home */
 /* page hero: identical box on every non-post page */
-.page-hero { position: relative; height: 180px; }
-.page-hero + .page-title { margin: 32px 0 24px; }
+.page-hero { position: relative; height: 200px; }
+.page-hero:not(.home-hero) { margin-bottom: 24px; }
 .hero-art {
   position: absolute;
   right: 0;
@@ -107,6 +107,48 @@ main { flex: 1 0 auto; }
   pointer-events: none;
   user-select: none;
 }
+
+/* home hero: title sits on the low left ridge */
+.hero-title {
+  position: absolute;
+  left: 0;
+  top: 24px;
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -.03em;
+  line-height: 1.2;
+  color: var(--strong);
+}
+.home-hero + section .sec { margin-top: 40px; }
+/* home title: handwritten signature */
+.sig-title { top: 8px; }
+.sig { display: block; height: 64px; width: auto; aspect-ratio: 640 / 182; }
+.sig-stroke { stroke-dasharray: 1; stroke-dashoffset: 0; }
+@media (max-width: 640px) {
+  .hero-title { top: 20px; font-size: 24px; }
+  .sig { height: 48px; }
+}
+
+.home-hero .hero-art { display: block; height: auto; }
+.sketch-stroke { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.sketch-line { opacity: 0; }
+
+/* intro (first visit or reload): one drawing at a time - signature, then pencil lines with shading trailing; sections follow */
+@media (prefers-reduced-motion: no-preference) {
+  .intro { --ease: cubic-bezier(.22, .61, .36, 1); --draw: cubic-bezier(.45, .05, .55, .95); }
+  .intro .home-hero .hero-art { mix-blend-mode: normal; }
+  .intro .sig-stroke { animation: intro-sketch 1s var(--draw) both; }
+  .intro .sketch-stroke { animation: intro-sketch 1.15s var(--draw) .8s both; }
+  .intro .shade-stroke { animation-delay: 1.15s; }
+  .intro .sketch-line { animation: intro-out .7s ease-in-out 1.6s both; }
+  .intro main > section { animation: intro-slide .55s var(--ease) 1.4s both; }
+  .intro main > section + section { animation-delay: 1.55s; }
+  .intro .shelf .book-card[style*="--i"] { animation: none; }
+}
+@keyframes intro-sketch { from { stroke-dashoffset: 1; } }
+@keyframes intro-slide { from { opacity: 0; transform: translateY(8px); } }
+@keyframes intro-out { from { opacity: 1; } to { opacity: 0; } }
 
 /* section heading */
 .sec { display: flex; justify-content: space-between; align-items: baseline; margin: 64px 0 10px; }
@@ -132,7 +174,7 @@ main { flex: 1 0 auto; }
   aspect-ratio: 3 / 4.2;
   object-fit: cover;
   border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 4px 10px -4px rgba(0, 0, 0, .14);
 }
 .cover.cover-fallback {
   position: relative;
@@ -268,8 +310,8 @@ main { flex: 1 0 auto; }
 /* slow hover zoom on covers and thumbnails */
 .thumb, .book-card .cover, .book .cover { transition: transform .6s cubic-bezier(.22, .61, .36, 1), box-shadow .6s cubic-bezier(.22, .61, .36, 1); will-change: transform; backface-visibility: hidden; }
 .tl-item:hover .thumb, .book-card:hover .cover, .book-cover:hover .cover { transform: scale(1.05); }
-.book-card:hover .cover, .book-cover:hover .cover { box-shadow: 0 8px 18px -6px rgba(0, 0, 0, .18); }
-.book.arrived .cover { transform: scale(1.05); box-shadow: 0 8px 18px -6px rgba(0, 0, 0, .18); }
+.book-card:hover .cover, .book-cover:hover .cover { box-shadow: 0 10px 22px -6px rgba(0, 0, 0, .22); }
+.book.arrived .cover { transform: scale(1.05); box-shadow: 0 10px 22px -6px rgba(0, 0, 0, .22); }
 
 @media (prefers-reduced-motion: reduce) {
   .post-row h3, .tl-body h3, .chapters a { transition: none; }
@@ -298,6 +340,6 @@ main { flex: 1 0 auto; }
   .thumb-book { width: 34px; height: 48px; }
 }
 .empty { color: var(--faint); font-size: 14px; margin: 8px 0; }
-.page-hero ~ section ~ section .sec { margin-top: 64px; }
-.page-hero + .page-title + .book { border-top: 0; }
+.page-hero ~ section ~ section .sec { margin-top: 128px; }
+.page-hero + .book { border-top: 0; }
 .sec + .post-list, .sec + .shelf, .sec + .empty { padding-left: 16px; }
