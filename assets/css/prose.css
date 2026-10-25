@@ -75,6 +75,23 @@
   color: var(--faint);
 }
 
+.prose div[data-lang].has-copy::before { right: 62px; }
+.copy-btn {
+  position: absolute;
+  top: 5px;
+  right: 8px;
+  z-index: 1;
+  font: 11px/1 var(--mono);
+  color: var(--faint);
+  background: var(--code-bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 3px 7px;
+  cursor: pointer;
+}
+.copy-btn:hover { color: var(--fg); border-color: var(--line-strong); }
+.copy-btn.copied { color: var(--accent); }
+
 .prose pre {
   margin: 0;
   background: var(--code-bg);
