@@ -116,6 +116,9 @@ button { font: inherit; color: inherit; }
 .cm-live .cm-bullet { color: var(--faint); }
 .cm-live .cm-img { display: inline-block; max-width: 100%; vertical-align: top; border-radius: 6px; }
 #src .cm-live .cm-line.cm-quote { background: var(--quote-bg); border-left: 3px solid var(--line-strong); padding: 0 20px; color: var(--soft); }
+/* Nested quotes: one extra bar per level. */
+#src .cm-live .cm-line.cm-quote-2 { padding-left: 34px; background: linear-gradient(90deg, transparent 11px, var(--line-strong) 11px 14px, transparent 14px), var(--quote-bg); }
+#src .cm-live .cm-line.cm-quote-3 { padding-left: 48px; background: linear-gradient(90deg, transparent 11px, var(--line-strong) 11px 14px, transparent 14px 25px, var(--line-strong) 25px 28px, transparent 28px), var(--quote-bg); }
 #src .cm-live .cm-line.cm-hr { color: transparent; background: linear-gradient(var(--line-strong), var(--line-strong)) center / 100% 1px no-repeat; }
 /* Fenced code: a code box. With the cursor elsewhere the opening fence shrinks to a label and the closing one disappears. */
 #src .cm-live .cm-line.cm-codeblock { font: 13.5px/1.7 var(--mono); background: var(--code-bg); padding: 0 16px; }

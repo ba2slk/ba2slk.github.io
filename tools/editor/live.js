@@ -78,9 +78,12 @@ function build(view) {
             }
             return false;
           case 'Blockquote':
+            if (n.node.parent?.name === 'Blockquote') return; // the outermost quote styles every line
             for (let p = n.from; p <= n.to; ) {
               const l = state.doc.lineAt(p);
-              add(l.from, l.from, line('cm-quote'));
+              // Nesting depth = the `>` marks at the line start, so `> > >` looks nested like the preview.
+              const depth = Math.min(3, (l.text.match(/^\s*((?:>\s?)*)/)[1].match(/>/g) || []).length);
+              add(l.from, l.from, line('cm-quote' + (depth > 1 ? ' cm-quote-' + depth : '')));
               p = l.to + 1;
             }
             return;

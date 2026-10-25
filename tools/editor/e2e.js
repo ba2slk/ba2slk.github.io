@@ -220,7 +220,9 @@ const check = (name, cond, extra) => { if (cond) { ok++; console.log('PASS', nam
   check('code blocks get copy buttons', await js(`return !!document.querySelector('#src .cm-codeblock .copy-btn') && !!document.querySelector('#p-body .has-copy > .copy-btn')`));
   await js(`const ta = document.getElementById('src'); ta.value = '#제목\\n* a'; ta.dispatchEvent(new Event('input')); document.getElementById('format-btn').click()`);
   check('format button fixes markdown', await js(`return document.getElementById('src').value`) === '# 제목\n\n- a\n');
+  await js(`const ta = document.getElementById('src'); ta.value = '> > > 깊게\\n> 얕게\\n\\n끝'; ta.dispatchEvent(new Event('input')); ta.setSelectionRange(ta.value.length, ta.value.length)`);
   await sleep(100);
+  check('nested quote shows its depth in live mode', await js(`const q = document.querySelectorAll('#src .cm-quote'); return q.length === 2 && q[0].classList.contains('cm-quote-3') && !q[1].classList.contains('cm-quote-2')`));
   await js(`document.getElementById('src').value = ''; document.getElementById('src').dispatchEvent(new Event('input'))`);
 
   // 9. Sidebar: drag to resize, fold and unfold, remembered across reloads.
