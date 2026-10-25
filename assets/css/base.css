@@ -128,6 +128,8 @@ main { flex: 1 0 auto; }
 @media (max-width: 640px) {
   .hero-title { top: 20px; font-size: 24px; }
   .sig { height: 48px; }
+  .page-hero { height: 140px; }
+  .page-hero ~ section ~ section .sec { margin-top: 80px; }
 }
 
 .home-hero .hero-art { display: block; height: auto; }
