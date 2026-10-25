@@ -79,7 +79,7 @@ const check = (name, cond, extra) => { if (cond) { ok++; console.log('PASS', nam
 
   // 3. Upload an image via the API path the UI uses, then rename slug: file, images, links move.
   const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-  await js(`const b=await (await fetch(${JSON.stringify(png)})).blob(); const f=new File([b],'shot.png',{type:'image/png'}); const dt=new DataTransfer(); dt.items.add(f); document.getElementById('src').dispatchEvent(new DragEvent('drop',{dataTransfer:dt,bubbles:true,cancelable:true}));`);
+  await js(`const b=await (await fetch(${JSON.stringify(png)})).blob(); const f=new File([b],'shot.png',{type:'image/png'}); const dt=new DataTransfer(); dt.items.add(f); document.querySelector('#src .cm-content').dispatchEvent(new DragEvent('drop',{dataTransfer:dt,bubbles:true,cancelable:true}));`);
   await sleep(1800);
   const draft1 = read('_drafts/my-first-draft.md');
   check('dropped image saved and linked', /!\[\]\(\/assets\/img\/posts\/my-first-draft\/\d+-shot\.png\)/.test(draft1), JSON.stringify(draft1));
@@ -162,7 +162,8 @@ const check = (name, cond, extra) => { if (cond) { ok++; console.log('PASS', nam
   // 8b. Scroll sync: the block at the editor's top sits at the same screen height in the preview, both ways.
   await go('http://127.0.0.1:4199/?open=' + ch3); await sleep(300);
   const synced = await js(`
-    const ta = document.getElementById('src'), pv = document.getElementById('preview');
+    document.getElementById('preview-btn').click(); await new Promise(r => setTimeout(r, 200));
+    const ta = document.querySelector('#src .cm-scroller'), pv = document.getElementById('preview');
     const blocks = [...document.querySelectorAll('#p-body [data-src]')];
     ta.scrollTop = ta.scrollHeight / 2;
     await new Promise(r => setTimeout(r, 200));
@@ -175,12 +176,12 @@ const check = (name, cond, extra) => { if (cond) { ok++; console.log('PASS', nam
   await js(`document.getElementById('new-article').click()`); await sleep(200);
   const fmt = await js(`
     const ta = document.getElementById('src'); ta.focus(); ta.value = 'hello world'; ta.setSelectionRange(6, 11);
-    const key = (k, shift) => ta.dispatchEvent(new KeyboardEvent('keydown', { key: k, ctrlKey: true, shiftKey: !!shift, bubbles: true, cancelable: true }));
+    const key = (k, shift) => document.querySelector('#src .cm-content').dispatchEvent(new KeyboardEvent('keydown', { key: k, ctrlKey: true, shiftKey: !!shift, bubbles: true, cancelable: true }));
     key('b'); const a = ta.value + '|' + ta.value.slice(ta.selectionStart, ta.selectionEnd);
     key('b'); const b = ta.value;
     key('i'); const c = ta.value; key('i');
     key('\`'); const f = ta.value; key('\`');
-    key('X', true); const d = ta.value; key('x', true);
+    key('X', true); const d = ta.value; key('X', true);
     key('k'); const e = ta.value + '|' + ta.value.slice(ta.selectionStart, ta.selectionEnd);
     return [a, b, c, f, d, e];`);
   check('formatting shortcuts', JSON.stringify(fmt) === JSON.stringify(['hello **world**|world', 'hello world', 'hello *world*', 'hello \`world\`', 'hello ~~world~~', 'hello [world](url)|url']), JSON.stringify(fmt));
@@ -193,7 +194,8 @@ const check = (name, cond, extra) => { if (cond) { ok++; console.log('PASS', nam
   };
   const typeText = (t) => send('Input.insertText', { text: t });
   await press('Enter'); await press('Tab');
-  await js(`const ta = document.getElementById('src'); const v = ta.value; ta.setSelectionRange(v.length - 3, v.length); document.execCommand('insertText', false, '- ');`);
+  await js(`const ta = document.getElementById('src'); const v = ta.value; ta.setSelectionRange(v.length - 3, v.length); document.querySelector('#src .cm-content').focus();`);
+  await typeText('- ');
   await typeText('예시'); await press('Enter'); await typeText('둘'); await press('Enter'); await press('Enter');
   const listText = await js(`return document.getElementById('src').value`);
   check('list keys: continue, nest under item text, end on empty', listText === '3. Deadlock\n   - 예시\n   - 둘\n- ', JSON.stringify(listText));
@@ -208,6 +210,14 @@ const check = (name, cond, extra) => { if (cond) { ok++; console.log('PASS', nam
   const quoteText = await js(`return document.getElementById('src').value`);
   check('quote keys', quoteText === '> 인용\n> - a\n> \n> 끝\n밖', JSON.stringify(quoteText));
   check('quote renders one blockquote with a list and two paragraphs', await js(`const q = document.querySelectorAll('#p-body blockquote'); return q.length === 1 && !!q[0].querySelector('ul > li') && q[0].querySelectorAll('p').length === 2`));
+
+  // 8f. Code blocks: Tab indents inside a fence; copy buttons in live mode and the preview.
+  await js(`const ta = document.getElementById('src'); ta.focus(); ta.value = '\`\`\`py\\nwhile x:\\nok\\n\`\`\`'; ta.dispatchEvent(new Event('input')); ta.setSelectionRange(15, 15);`);
+  await press('Tab');
+  check('tab indents inside a code block', await js(`return document.getElementById('src').value`) === '```py\nwhile x:\n    ok\n```', JSON.stringify(await js(`return document.getElementById('src').value`)));
+  await js(`document.getElementById('src').blur(); document.querySelector('#src .cm-content').blur()`);
+  await sleep(200);
+  check('code blocks get copy buttons', await js(`return !!document.querySelector('#src .cm-codeblock .copy-btn') && !!document.querySelector('#p-body .has-copy > .copy-btn')`));
   await js(`document.getElementById('src').value = ''; document.getElementById('src').dispatchEvent(new Event('input'))`);
 
   // 9. Sidebar: drag to resize, fold and unfold, remembered across reloads.

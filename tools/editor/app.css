@@ -8,8 +8,8 @@ button { font: inherit; color: inherit; }
 /* Thin scrollbars that only show while scrolling (app.js toggles .scrolling). Registering
    the color lets it transition, so the thumb fades instead of popping. */
 @property --thumb { syntax: '<color>'; inherits: false; initial-value: transparent; }
-.side, #src, .preview { --thumb: transparent; scrollbar-width: thin; scrollbar-color: var(--thumb) transparent; transition: --thumb .6s ease; }
-.side.scrolling, #src.scrolling, .preview.scrolling { --thumb: color-mix(in srgb, var(--faint) 55%, transparent); transition-duration: .15s; }
+.side, .cm-scroller, .preview { --thumb: transparent; scrollbar-width: thin; scrollbar-color: var(--thumb) transparent; transition: --thumb .6s ease; }
+.side.scrolling, .cm-scroller.scrolling, .preview.scrolling { --thumb: color-mix(in srgb, var(--faint) 55%, transparent); transition-duration: .15s; }
 
 :root { --side-w: 248px; }
 .app {
@@ -38,6 +38,8 @@ button { font: inherit; color: inherit; }
 .link-btn.small { font-size: 12px; color: var(--faint); margin-left: 4px; }
 .link-btn.danger:hover { color: #dc2626; }
 .actions-bar { display: flex; align-items: center; gap: 14px; }
+.view-toggles { display: flex; gap: 12px; padding-right: 14px; border-right: 1px solid var(--line); }
+.view-toggles [aria-pressed="true"] { color: var(--strong); font-weight: 600; }
 
 /* sidebar */
 .side { grid-area: side; position: relative; overflow-y: auto; overflow-x: hidden; padding: 16px 12px 40px; border-right: 1px solid var(--line); background: var(--bg); }
@@ -76,7 +78,7 @@ button { font: inherit; color: inherit; }
 .conflict { display: flex; gap: 14px; align-items: center; padding: 10px 28px; font-size: 13px; color: var(--strong); background: var(--quote-bg); border-bottom: 1px solid var(--line); }
 .conflict span { margin-right: auto; }
 .title-input { font: inherit; font-size: 24px; font-weight: 800; letter-spacing: -.03em; color: var(--strong); background: none; border: 0; outline: none; padding: 28px 28px 6px; }
-.title-input::placeholder, #src::placeholder { color: var(--faint); }
+.title-input::placeholder, #src .cm-placeholder { color: var(--faint); }
 .fields { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 4px 28px 14px; border-bottom: 1px solid var(--line); }
 .fields label { display: inline-flex; align-items: baseline; gap: 6px; font-size: 12px; color: var(--faint); }
 .fields input, .fields select { font: inherit; font-size: 13px; color: var(--soft); background: none; border: 0; border-bottom: 1px solid transparent; padding: 2px 0; outline: none; max-width: 100%; }
@@ -87,8 +89,53 @@ button { font: inherit; color: inherit; }
 #f-chapter { width: 5ch; }
 .fields select option { color: initial; }
 .app[data-kind="article"] .note-only, .app[data-kind="note"] .article-only { display: none; }
-#src { flex: 1; min-height: 0; resize: none; border: 0; outline: none; padding: 20px 28px 50vh; font: 14px/1.75 var(--mono); color: var(--fg); background: var(--bg); tab-size: 2; }
-#src.drag { background: var(--quote-bg); }
+/* editor (CodeMirror). Raw mode is plain monospace markdown; .cm-live styles it like the post. */
+#src { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#src .cm-editor { flex: 1; min-height: 0; color: var(--fg); background: var(--bg); }
+#src .cm-editor.cm-focused { outline: none; }
+#src .cm-scroller { font: 14px/1.75 var(--mono); }
+#src .cm-content { padding: 20px 28px 50vh; caret-color: var(--strong); }
+#src .cm-line { padding: 0; }
+#src .cm-cursor { border-left-color: var(--strong); }
+#src .cm-selectionBackground, #src .cm-focused .cm-selectionBackground { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+/* CodeMirror draws selection behind the text, so opaque line backgrounds (code boxes, quotes) hid it. Lift it above; it is translucent. */
+#src .cm-selectionLayer { z-index: 1 !important; pointer-events: none; }
+#src.drag .cm-editor { background: var(--quote-bg); }
+
+#src .cm-live .cm-scroller { font: 16px/1.8 var(--sans); }
+.cm-live .cm-h { font-weight: 800; letter-spacing: -.03em; line-height: 1.35; color: var(--strong); padding-top: .5em; }
+.cm-live .cm-h1 { font-size: 26px; }
+.cm-live .cm-h2 { font-size: 22px; }
+.cm-live .cm-h3 { font-size: 18px; font-weight: 700; }
+.cm-live .cm-h4, .cm-live .cm-h5, .cm-live .cm-h6 { font-size: 16px; font-weight: 700; }
+.cm-live .cm-strong { font-weight: 700; color: var(--strong); }
+.cm-live .cm-em { font-style: italic; }
+.cm-live .cm-strike { text-decoration: line-through; }
+.cm-live .cm-link { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+.cm-live .cm-icode { font-family: var(--mono); font-size: .86em; background: var(--inline-code-bg); border-radius: 4px; padding: .1em .35em; }
+.cm-live .cm-bullet { color: var(--faint); }
+.cm-live .cm-img { display: inline-block; max-width: 100%; vertical-align: top; border-radius: 6px; }
+#src .cm-live .cm-line.cm-quote { background: var(--quote-bg); border-left: 3px solid var(--line-strong); padding: 0 20px; color: var(--soft); }
+#src .cm-live .cm-line.cm-hr { color: transparent; background: linear-gradient(var(--line-strong), var(--line-strong)) center / 100% 1px no-repeat; }
+/* Fenced code: a code box. With the cursor elsewhere the opening fence shrinks to a label and the closing one disappears. */
+#src .cm-live .cm-line.cm-codeblock { font: 13.5px/1.7 var(--mono); background: var(--code-bg); padding: 0 16px; }
+#src .cm-live .cm-line.cm-codeblock-first { position: relative; padding-top: 10px; border-radius: 8px 8px 0 0; }
+#src .cm-live .cm-line.cm-codeblock-last { padding-bottom: 10px; border-radius: 0 0 8px 8px; }
+#src .cm-live .cm-line.cm-codeblock-first.cm-fence-quiet { color: var(--faint); font-size: 11px; }
+#src .cm-live .cm-codeblock .copy-btn { top: 6px; font-size: 11px; line-height: 1; }
+#src .cm-live .cm-line.cm-codeblock-last.cm-fence-quiet { font-size: 0; line-height: 0; }
+
+/* preview pane: optional on wide screens (Preview button), a tab on mobile */
+@media (min-width: 800px) {
+  .app:not(.with-preview) { grid-template-columns: var(--side-w) minmax(0, 1fr) 0; }
+  .side-folded .app:not(.with-preview) { grid-template-columns: 0 minmax(0, 1fr) 0; }
+  .app:not(.with-preview) .preview { display: none; }
+  .app:not(.with-preview) .write { border-right: 0; }
+  .app:not(.with-preview) .doc { max-width: calc(var(--content) + 56px); margin: 0 auto; }
+}
+@media (min-width: 800px) and (max-width: 1199px) {
+  .app:not(.with-preview), .side-folded .app:not(.with-preview) { grid-template-columns: minmax(0, 1fr) 0; }
+}
 
 /* preview pane */
 .preview { grid-area: preview; overflow-y: auto; }
@@ -145,7 +192,9 @@ dialog input.mono { font-family: var(--mono); font-size: 13px; }
   .actions-bar { gap: 10px; }
   .title-input { font-size: 21px; padding: 20px 16px 4px; }
   .fields { padding: 4px 16px 12px; }
-  #src { padding: 16px 16px 50vh; font-size: 13.5px; }
+  #src .cm-content { padding: 16px 16px 50vh; }
+  .not-mobile { display: none; }
+  .view-toggles { padding-right: 10px; }
   .preview-inner { padding: 0 16px 50vh; }
 }
 

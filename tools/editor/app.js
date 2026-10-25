@@ -1,4 +1,6 @@
 /* global EditorLib, marked, hljs */
+import { createEditor } from '/editor/live.js';
+
 (function () {
   const L = EditorLib;
   const $ = (id) => document.getElementById(id);
@@ -141,7 +143,7 @@
     fitSlug();
     $('f-book').value = data.book || (books[0] ? books[0].slug : '');
     $('f-chapter').value = data.chapter || '';
-    $('src').value = body.replace(/^\n/, '');
+    ed.load(body.replace(/^\n/, ''));
     refreshImageOptions(data.image || '');
     showActions();
     status(cur.path ? (cur.draft ? 'Draft' : cur.archived ? 'Archived · not on the site' : 'Published · edits save to _posts') : 'New draft');
@@ -154,7 +156,7 @@
     const m = cur.raw.match(/^---\n[\s\S]*?\n---\n?/);
     const head = m ? m[0] : '';
     const sep = cur.raw.slice(head.length).startsWith('\n') ? '\n' : (head ? '\n' : '');
-    const text = head + sep + $('src').value;
+    const text = head + sep + ed.text;
     const note = cur.kind === 'note';
     return L.setFrontMatter(text, {
       title: $('f-title').value,
@@ -184,7 +186,7 @@
     if (!cur) return true;
     const text = compose();
     if (cur.path && text === cur.raw) { status(cur.draft ? 'Draft' : 'Published'); return true; }
-    if (!cur.path && !$('f-title').value && !$('src').value.trim()) return true; // nothing typed yet
+    if (!cur.path && !$('f-title').value && !ed.text.trim()) return true; // nothing typed yet
     if (!cur.path) cur.path = `_drafts/${L.slugify($('f-slug').value) || 'untitled-' + Date.now()}.md`;
     status('Saving…');
     try {
@@ -242,7 +244,7 @@
     const book = cur.kind === 'note' && books.find((b) => b.slug === $('f-book').value);
     $('p-title').textContent = $('f-title').value || 'Untitled';
     // Render block by block so each preview block knows where it starts in the source (for scroll sync).
-    const tokens = marked.lexer($('src').value);
+    const tokens = marked.lexer(ed.text);
     let at = 0;
     const html = tokens.map((t) => {
       const start = at;
@@ -270,41 +272,28 @@
       wrap.appendChild(pre);
       if (window.hljs && hljs.getLanguage(lang)) code.innerHTML = hljs.highlight(code.textContent, { language: lang }).value;
     });
+    window.CopyCode.addCopyButtons(body);
     // Move each marker onto the block after it, so the markers don't disturb margins.
     body.querySelectorAll('span[data-src]').forEach((s) => {
       const el = s.nextElementSibling;
       if (el && !el.dataset.src) el.dataset.src = s.dataset.src;
       s.remove();
     });
-    anchors = null;
   }
 
   // ---------- scroll sync ----------
   // anchors: [srcY, previewY] pairs (content coordinates), one per block, ascending.
+  // Rebuilt on each sync: live preview changes line heights as the cursor moves.
   let anchors = null;
   function buildAnchors() {
-    const ta = $('src'), pv = $('preview');
-    const cs = getComputedStyle(ta);
-    // An off-screen copy of the textarea with markers at each block start tells us where wrapped text lands.
-    const mirror = document.createElement('div');
-    ['font', 'letterSpacing', 'tabSize', 'paddingLeft', 'paddingRight', 'paddingTop'].forEach((k) => { mirror.style[k] = cs[k]; });
-    Object.assign(mirror.style, { position: 'absolute', visibility: 'hidden', top: '0', left: '-9999px', boxSizing: 'border-box', width: ta.clientWidth + 'px', whiteSpace: 'pre-wrap', overflowWrap: 'break-word' });
+    const v = ed.view, sc = v.scrollDOM, pv = $('preview');
     const blocks = [...$('p-body').querySelectorAll('[data-src]')];
-    const text = ta.value;
-    let last = 0;
-    const marks = blocks.map((el) => {
-      const i = Number(el.dataset.src);
-      mirror.append(text.slice(last, i));
-      last = i;
-      return mirror.appendChild(document.createElement('span'));
-    });
-    mirror.append(text.slice(last));
-    document.body.appendChild(mirror);
+    // lineBlockAt measures from the top of the document; shift that into scroller coordinates.
+    const off = v.documentTop - sc.getBoundingClientRect().top + sc.scrollTop;
     const top = pv.getBoundingClientRect().top - pv.scrollTop;
     const pairs = [[0, 0]];
-    blocks.forEach((el, k) => pairs.push([marks[k].offsetTop, el.getBoundingClientRect().top - top]));
-    pairs.push([ta.scrollHeight, pv.scrollHeight]);
-    mirror.remove();
+    blocks.forEach((el) => pairs.push([off + v.lineBlockAt(Math.min(Number(el.dataset.src), v.state.doc.length)).top, el.getBoundingClientRect().top - top]));
+    pairs.push([sc.scrollHeight, pv.scrollHeight]);
     // Keep it monotonic in both axes so it can be inverted.
     anchors = pairs.filter((p, i) => i === 0 || (p[0] >= pairs[i - 1][0] && p[1] >= pairs[i - 1][1]));
   }
@@ -321,12 +310,12 @@
   function sync(from) {
     if (syncing === from) { syncing = null; return; }
     if (!cur || $('preview').offsetParent === null || $('write').offsetParent === null) return;
-    if (!anchors) buildAnchors();
-    const ta = $('src'), pv = $('preview');
-    // Line up the block at the top of the textarea with the same screen height in the preview.
-    const gap = ta.getBoundingClientRect().top - pv.getBoundingClientRect().top;
-    const to = from === ta ? pv : ta;
-    const y = from === ta ? mapY(ta.scrollTop, 0) - gap : mapY(pv.scrollTop + gap, 1);
+    buildAnchors();
+    const sc = ed.view.scrollDOM, pv = $('preview');
+    // Line up the block at the top of the editor with the same screen height in the preview.
+    const gap = sc.getBoundingClientRect().top - pv.getBoundingClientRect().top;
+    const to = from === sc ? pv : sc;
+    const y = from === sc ? mapY(sc.scrollTop, 0) - gap : mapY(pv.scrollTop + gap, 1);
     const max = to.scrollHeight - to.clientHeight;
     // At either end, pin the other pane to the same end.
     const want = from.scrollTop <= 0 ? 0 : from.scrollTop >= from.scrollHeight - from.clientHeight - 1 ? max : Math.round(Math.max(0, Math.min(max, y)));
@@ -334,80 +323,129 @@
     syncing = to;
     to.scrollTop = want;
   }
-  // Show the scrollbar while a pane scrolls, then let it fade out.
-  ['side', 'src', 'preview'].forEach((id) => {
-    let t;
-    $(id).addEventListener('scroll', (e) => {
-      e.target.classList.add('scrolling');
-      clearTimeout(t);
-      t = setTimeout(() => e.target.classList.remove('scrolling'), 800);
-    });
-  });
-  $('src').addEventListener('scroll', () => sync($('src')));
-  $('preview').addEventListener('scroll', () => sync($('preview')));
-  addEventListener('resize', () => { anchors = null; });
-  // Images change the preview height once they load.
-  $('p-body').addEventListener('load', () => { anchors = null; }, true);
 
-  // ---------- formatting shortcuts ----------
-  // execCommand keeps the textarea's undo history (and fires `input`, so it saves).
+  // ---------- editor ----------
+  // Replace [from, to) with text (undoable), then select [s, e).
+  function replaceRange(from, to, text, s, e) {
+    ed.view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: s, head: e }, userEvent: 'input', scrollIntoView: true });
+  }
+  // Replace the selection, then select [selStart, selEnd) counted from where it starts.
   function replaceSel(text, selStart, selEnd) {
-    const ta = $('src');
-    const base = ta.selectionStart;
-    if (!document.execCommand('insertText', false, text)) { ta.setRangeText(text, ta.selectionStart, ta.selectionEnd); ta.dispatchEvent(new Event('input')); }
-    ta.setSelectionRange(base + selStart, base + selEnd);
+    const { from, to } = ed.view.state.selection.main;
+    replaceRange(from, to, text, from + selStart, from + selEnd);
   }
   function wrap(mark) {
-    const ta = $('src');
-    const s = ta.selectionStart, e = ta.selectionEnd, v = ta.value, n = mark.length;
+    const { from: s, to: e } = ed.view.state.selection.main;
+    const v = ed.text, n = mark.length;
     const sel = v.slice(s, e);
     if (v.slice(s - n, s) === mark && v.slice(e, e + n) === mark) {
       // Already wrapped: take the marks off.
-      ta.setSelectionRange(s - n, e + n);
-      replaceSel(sel, 0, sel.length);
+      replaceRange(s - n, e + n, sel, s - n, e - n);
     } else if (sel.length > 2 * n && sel.startsWith(mark) && sel.endsWith(mark)) {
       replaceSel(sel.slice(n, -n), 0, sel.length - 2 * n);
     } else replaceSel(mark + sel + mark, n, n + sel.length);
   }
   function link() {
-    const ta = $('src');
-    const sel = ta.value.slice(ta.selectionStart, ta.selectionEnd);
+    const { from, to } = ed.view.state.selection.main;
+    const sel = ed.text.slice(from, to);
     // Select the url part so it can be typed over right away.
     replaceSel(`[${sel}](url)`, sel.length + 3, sel.length + 6);
   }
-  // Ctrl/Cmd + key; strikethrough is Ctrl/Cmd + Shift + X.
-  const shortcuts = { b: () => wrap('**'), i: () => wrap('*'), '`': () => wrap('`'), k: link, 'shift+x': () => wrap('~~') };
-  // Replace [from, to) with text (undoable), then select [s, e).
-  function replaceRange(from, to, text, s, e) {
-    const ta = $('src');
-    ta.setSelectionRange(from, to);
-    if (!(text ? document.execCommand('insertText', false, text) : document.execCommand('delete'))) { ta.setRangeText(text, from, to); ta.dispatchEvent(new Event('input')); }
-    ta.setSelectionRange(s, e);
+  // Inside a ``` block when an odd number of fence lines come before the caret's line.
+  function inFence(v, s) {
+    const head = v.slice(0, v.lastIndexOf('\n', s - 1) + 1);
+    return (head.match(/^\s*(```|~~~)/gm) || []).length % 2 === 1;
   }
-  // Lists: Tab / Shift+Tab nest and un-nest, Enter continues the list, Enter on an empty item ends it.
-  $('src').addEventListener('keydown', (e) => {
-    if (e.isComposing || e.metaKey || e.ctrlKey || e.altKey) return;
-    const ta = $('src'), v = ta.value, s = ta.selectionStart, end = ta.selectionEnd;
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const r = L.indentLines(v, s, end, e.shiftKey ? -1 : 1);
-      if (r.text !== v.slice(r.from, r.to)) replaceRange(r.from, r.to, r.text, r.s, r.e);
-    } else if (e.key === 'Enter' && s === end) {
-      const from = v.lastIndexOf('\n', s - 1) + 1;
-      let to = v.indexOf('\n', s); if (to < 0) to = v.length;
-      const c = L.continueList(v.slice(from, to), e.shiftKey);
-      if (!c) return;
-      e.preventDefault();
-      if (c.insert) { replaceRange(s, s, c.insert, s + c.insert.length, s + c.insert.length); return; }
-      const r = c.nested ? L.indentLines(v, s, s, -1) : { from, to, text: c.line };
-      replaceRange(r.from, r.to, r.text, r.from + r.text.length, r.from + r.text.length);
-    }
+  // Code: Tab inserts 4 spaces (or shifts every selected line), Shift+Tab takes up to 4 off.
+  function codeIndent(v, s, end, dir) {
+    if (dir > 0 && s === end) { replaceRange(s, s, '    ', s + 4, s + 4); return true; }
+    const from = v.lastIndexOf('\n', s - 1) + 1;
+    let to = v.indexOf('\n', end > s && v[end - 1] === '\n' ? end - 1 : end); if (to < 0) to = v.length;
+    const lines = v.slice(from, to).split('\n');
+    const cut = lines.map((l) => (dir > 0 ? -4 : Math.min(4, l.match(/^ */)[0].length)));
+    const out = lines.map((l, i) => (dir > 0 ? '    ' + l : l.slice(cut[i]))).join('\n');
+    replaceRange(from, to, out, Math.max(from, s - cut[0]), end + out.length - (to - from));
+    return true;
+  }
+  // Lists: Tab / Shift+Tab nest and un-nest.
+  function indent(dir) {
+    const v = ed.text, { from: s, to: end } = ed.view.state.selection.main;
+    if (inFence(v, s)) return codeIndent(v, s, end, dir);
+    const r = L.indentLines(v, s, end, dir);
+    if (r.text !== v.slice(r.from, r.to)) replaceRange(r.from, r.to, r.text, r.s, r.e);
+    return true;
+  }
+  // Enter continues a list or quote, Enter on an empty item ends it. Returns false to let a plain newline through.
+  function enter(shift) {
+    const v = ed.text, { from: s, to: end } = ed.view.state.selection.main;
+    if (s !== end) return false;
+    const from = v.lastIndexOf('\n', s - 1) + 1;
+    let to = v.indexOf('\n', s); if (to < 0) to = v.length;
+    const c = L.continueList(v.slice(from, to), shift);
+    if (!c) return false;
+    if (c.insert) { replaceRange(s, s, c.insert, s + c.insert.length, s + c.insert.length); return true; }
+    const r = c.nested ? L.indentLines(v, s, s, -1) : { from, to, text: c.line };
+    replaceRange(r.from, r.to, r.text, r.from + r.text.length, r.from + r.text.length);
+    return true;
+  }
+  const key = (k, fn) => ({ key: k, run: () => fn() !== false });
+  const ed = createEditor($('src'), {
+    onChange: () => { changed(); refreshImageOptions($('f-image').value); },
+    keys: [
+      key('Mod-b', () => wrap('**')), key('Mod-i', () => wrap('*')), key('Mod-`', () => wrap('`')), key('Mod-k', link), key('Mod-X', () => wrap('~~')),
+      key('Tab', () => indent(1)), key('Shift-Tab', () => indent(-1)),
+      key('Enter', () => enter(false)), key('Shift-Enter', () => enter(true)),
+    ],
+    handlers: {
+      paste(e) { const files = images(e.clipboardData.files); if (!files.length) return false; e.preventDefault(); files.forEach(insertImage); return true; },
+      dragover(e) { e.preventDefault(); $('src').classList.add('drag'); },
+      dragleave() { $('src').classList.remove('drag'); },
+      drop(e) {
+        $('src').classList.remove('drag');
+        const files = images(e.dataTransfer.files);
+        if (!files.length) return false;
+        e.preventDefault(); files.forEach(insertImage); return true;
+      },
+    },
   });
-  $('src').addEventListener('keydown', (e) => {
-    if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
-    const fn = shortcuts[(e.shiftKey ? 'shift+' : '') + e.key.toLowerCase()];
-    if (fn) { e.preventDefault(); fn(); }
+  // Let scripts and tests treat #src like the textarea it replaced.
+  Object.defineProperties($('src'), {
+    value: { get: () => ed.text, set: (t) => ed.view.dispatch({ changes: { from: 0, to: ed.view.state.doc.length, insert: t } }) },
+    selectionStart: { get: () => ed.view.state.selection.main.from },
+    selectionEnd: { get: () => ed.view.state.selection.main.to },
   });
+  $('src').setSelectionRange = (s, e) => ed.view.dispatch({ selection: { anchor: s, head: e } });
+  $('src').focus = () => ed.view.focus();
+
+  // Live preview in the editor or raw markdown, and the side preview pane; both remembered.
+  const stored = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  function setLive(on) {
+    ed.setLive(on);
+    $('raw-btn').setAttribute('aria-pressed', String(!on));
+    remember('raw', on ? '0' : '1');
+  }
+  function setPane(on) {
+    app.classList.toggle('with-preview', on);
+    $('preview-btn').setAttribute('aria-pressed', String(on));
+    remember('preview-pane', on ? '1' : '0');
+  }
+  setLive(stored('raw') !== '1');
+  setPane(stored('preview-pane') === '1');
+  $('raw-btn').onclick = () => setLive(!ed.live);
+  $('preview-btn').onclick = () => setPane(!app.classList.contains('with-preview'));
+  document.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'e') { e.preventDefault(); setLive(!ed.live); } });
+
+  // Show the scrollbar while a pane scrolls, then let it fade out.
+  [$('side'), ed.view.scrollDOM, $('preview')].forEach((el) => {
+    let t;
+    el.addEventListener('scroll', () => {
+      el.classList.add('scrolling');
+      clearTimeout(t);
+      t = setTimeout(() => el.classList.remove('scrolling'), 800);
+    });
+  });
+  ed.view.scrollDOM.addEventListener('scroll', () => sync(ed.view.scrollDOM));
+  $('preview').addEventListener('scroll', () => sync($('preview')));
 
   // ---------- archive / delete ----------
   function showActions() {
@@ -460,7 +498,7 @@
 
   // ---------- images ----------
   function refreshImageOptions(selected) {
-    const urls = [...new Set([...$('src').value.matchAll(/!\[[^\]]*\]\(([^)\s]+)/g)].map((m) => m[1]))];
+    const urls = [...new Set([...ed.text.matchAll(/!\[[^\]]*\]\(([^)\s]+)/g)].map((m) => m[1]))];
     if (selected && !urls.includes(selected)) urls.unshift(selected);
     $('f-image').replaceChildren(new Option('None', ''), ...urls.map((u) => new Option(u.split('/').pop(), u)));
     $('f-image').value = selected || '';
@@ -473,27 +511,14 @@
     try {
       const slug = cur.path ? L.postSlug(cur.path) : (L.slugify($('f-slug').value) || 'untitled');
       const { url } = await api('/api/upload', { slug, name: file.name, data: await readAsDataUrl(file) });
-      const ta = $('src');
-      const before = ta.value.slice(0, ta.selectionStart);
+      const { from, to } = ed.view.state.selection.main;
+      const before = ed.text.slice(0, from);
       const md = (before && !before.endsWith('\n') ? '\n' : '') + `![](${url})\n`;
-      ta.setRangeText(md, ta.selectionStart, ta.selectionEnd, 'end');
-      refreshImageOptions($('f-image').value);
-      changed();
+      replaceRange(from, to, md, from + md.length, from + md.length);
     } catch (e) { status('Upload failed: ' + e.message, true); }
   }
 
   const images = (list) => [...list].filter((f) => f.type.startsWith('image/'));
-  $('src').addEventListener('paste', (e) => {
-    const files = images(e.clipboardData.files);
-    if (files.length) { e.preventDefault(); files.forEach(insertImage); }
-  });
-  $('src').addEventListener('dragover', (e) => { e.preventDefault(); $('src').classList.add('drag'); });
-  $('src').addEventListener('dragleave', () => $('src').classList.remove('drag'));
-  $('src').addEventListener('drop', (e) => {
-    e.preventDefault();
-    $('src').classList.remove('drag');
-    images(e.dataTransfer.files).forEach(insertImage);
-  });
 
   // ---------- books ----------
   let coverData = null;
@@ -627,9 +652,8 @@
   $('new-article').onclick = $('empty-article').onclick = () => newPost('article');
   $('new-note').onclick = $('empty-note').onclick = () => newPost('note');
   $('filter').addEventListener('input', renderList);
-  ['f-title', 'f-chapter', 'src'].forEach((id) => $(id).addEventListener('input', changed));
+  ['f-title', 'f-chapter'].forEach((id) => $(id).addEventListener('input', changed));
   $('f-image').addEventListener('change', changed);
-  $('src').addEventListener('input', () => refreshImageOptions($('f-image').value));
   $('publish').onclick = async () => {
     if (!$('f-title').value.trim()) { status('Add a title before publishing', true); $('f-title').focus(); return; }
     if (!(await save())) return;
