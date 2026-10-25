@@ -109,5 +109,5 @@
 .prose th, .prose td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; }
 .prose th { font-weight: 700; color: var(--strong); border-bottom: 2px solid var(--line-strong); }
 
-.prose img { max-width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); }
+.prose img { max-width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line-strong); }
 .prose hr { border: 0; border-top: 1px solid var(--line-strong); margin: 36px 0; }
