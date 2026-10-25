@@ -4,9 +4,9 @@ layout: default
 <script>
   try {
     var nav = performance.getEntriesByType('navigation')[0];
-    if (!localStorage.getItem('intro-seen') || (nav && nav.type === 'reload')) {
+    if (!sessionStorage.getItem('intro-seen') || (nav && nav.type === 'reload')) {
       document.documentElement.classList.add('intro');
-      localStorage.setItem('intro-seen', '1');
+      sessionStorage.setItem('intro-seen', '1');
     }
   } catch (e) {}
 </script>
